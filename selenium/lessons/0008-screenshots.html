@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 8 · Screenshots</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0007-element-types.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0009-rapid-fire-answers.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 08 &middot; Selenium</p>
+<h1>Screenshots</h1>
+<p class="standfirst">Short lesson, and the one where the two courses meet. TestNG lesson
+7 told you <code>onTestFailure</code> is where the screenshot goes. This is the other
+half: what actually takes it, and why the listener cannot reach your driver unless you
+have built for it. All measured on this machine.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. Cast the driver to <code>TakesScreenshot</code>, then
+  <code>getScreenshotAs(...)</code>.<br>
+  2. Three output types: <code>FILE</code> to save, <code>BYTES</code> to attach to a
+  report, <code>BASE64</code> to embed in HTML.<br>
+  3. <code>FILE</code> gives you a <strong>temp</strong> file. Copy it or you lose
+  it.<br>
+  4. Put it in a listener, not in your tests. One class covers every test in the
+  suite.</p>
+</div>
+
+<hr>
+
+<h2 id="basics">Taking one</h2>
+
+<p><code>TakesScreenshot</code> is a separate interface from <code>WebDriver</code>, so
+you cast:</p>
+
+<pre><code>File temp = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);</code></pre>
+
+<p>All the browser drivers implement it. The cast is safe in practice, and it is why the
+line looks odd the first time you see it.</p>
+
+<h3>The three output types</h3>
+
+<table>
+  <thead><tr><th>Type</th><th>You get</th><th>Use it for</th></tr></thead>
+  <tbody>
+    <tr><td><code>OutputType.FILE</code></td><td>a <code>File</code> in the temp directory</td><td>saving to disk yourself</td></tr>
+    <tr><td><code>OutputType.BYTES</code></td><td><code>byte[]</code></td><td>attaching to Allure or a report, in memory</td></tr>
+    <tr><td><code>OutputType.BASE64</code></td><td><code>String</code></td><td>embedding straight into an HTML report</td></tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <span class="lbl">The bug everyone hits: "my screenshots disappeared"</span>
+  <p><code>OutputType.FILE</code> returns a file in the system temp directory. It is
+  deleted when the JVM exits. If you keep the <code>File</code> reference and never copy
+  the bytes anywhere, you have nothing after the run.</p>
+<pre><code>File temp = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+
+Files.createDirectories(out.getParent());
+Files.copy(temp.toPath(), out, StandardCopyOption.REPLACE_EXISTING);   // this line</code></pre>
+  <p>Older tutorials use <code>FileUtils.copyFile</code> from Apache Commons IO. That
+  works, but it is a whole dependency for one line that <code>java.nio.file.Files</code>
+  already does.</p>
+</div>
+
+<h3>Element screenshots, a Selenium 4 addition</h3>
+
+<p>Since Selenium 4, <code>WebElement</code> implements <code>TakesScreenshot</code> too.
+You can capture one component instead of the whole viewport, which makes a report much
+easier to read.</p>
+
+<pre><code>WebElement table = driver.findElement(By.id("users"));
+File justTheTable = table.getScreenshotAs(OutputType.FILE);</code></pre>
+
+<p>Measured on this page: the full viewport came out at <strong>50,012 bytes</strong> and
+the single table at <strong>9,130 bytes</strong>. The test asserts that relationship rather
+than describing it.</p>
+
+<p class="aside">Worth knowing for a follow-up: a plain Selenium screenshot captures the
+<strong>viewport</strong>, not the whole scrollable page. Full-page capture is not part of
+the W3C WebDriver standard, so it needs a browser-specific command or a scroll-and-stitch
+helper. Saying that is a better answer than assuming it grabs everything.</p>
+
+<hr>
+
+<h2 id="listener">Where it actually belongs</h2>
+
+<p>Never in your tests. You would write the same six lines four hundred times, and every
+test would carry code about diagnosing itself.</p>
+
+<p>One listener covers the whole suite:</p>
+
+<pre><code>public class ScreenshotListener implements ITestListener {
+
+    @Override
+    public void onTestFailure(ITestResult result) {
+        WebDriver driver = DriverManager.get();
+        if (driver == null) return;              // @BeforeMethod may have failed
+
+        try {
+            File temp = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+            Files.createDirectories(OUT);
+            Files.copy(temp.toPath(), OUT.resolve(name), REPLACE_EXISTING);
+        } catch (IOException | RuntimeException e) {
+            // swallowed on purpose, see below
+        }
+    }
+}</code></pre>
+
+<p>Attach it with <code>@Listeners(ScreenshotListener.class)</code> on the class, or in
+<code>testng.xml</code> for the whole suite.</p>
+
+<div class="win">
+  <span class="lbl">The design point, and it is the best thing in this lesson</span>
+  <p>A listener is handed an <code>ITestResult</code>. It <strong>cannot see a private
+  <code>WebDriver</code> field on your test class.</strong></p>
+  <p>So the driver has to live somewhere both can reach. That is
+  <code>DriverManager</code>, and it is the practical reason the class exists, before you
+  even get to thread safety.</p>
+  <p>Say this in an interview and you have connected your listener design to your driver
+  design in one sentence. Most people describe them as two unrelated features.</p>
+</div>
+
+<h3>Three details that make it production code</h3>
+
+<p><strong>Null-check the driver.</strong> If <code>@BeforeMethod</code> failed, there is
+no browser. A listener that throws here replaces your real failure with a
+<code>NullPointerException</code> from the listener, which is a genuinely horrible thing
+to debug.</p>
+
+<p><strong>Swallow exceptions, and only here.</strong> This is the exception to
+<a href="0005-exception-handling.html">lesson 5's</a> rule. A screenshot that fails must
+not take down the report. It is diagnostics, not the test.</p>
+
+<p><strong>Name the file so it is findable.</strong> Class, method and a timestamp:</p>
+
+<pre><code>ScreenshotTest.thisOneFailsWhenYouFlipTheConstant-20260829-164835-309.png</code></pre>
+
+<p>The timestamp matters because a retried test writes twice, and a fixed name would
+overwrite the first attempt, which is usually the interesting one.</p>
+
+<div class="warn">
+  <span class="lbl">The gotcha from TestNG lesson 7, and it still applies</span>
+  <p>A retried attempt fires <code>onTestSkipped</code>, <strong>not</strong>
+  <code>onTestFailure</code>. So a screenshot listener that only implements
+  <code>onTestFailure</code> captures nothing for the attempts you most want to see.</p>
+  <p>If you use <code>IRetryAnalyzer</code>, take the screenshot in
+  <code>onTestSkipped</code> too.</p>
+</div>
+
+<hr>
+
+<h2 id="beyond">What else to capture, and why it matters more than the image</h2>
+
+<p>A screenshot alone often shows a normal-looking page. The context is what closes the
+bug. On failure, log:</p>
+
+<ul>
+  <li>the <strong>URL</strong>, <code>driver.getCurrentUrl()</code>, because the test may
+  have been on the wrong page entirely</li>
+  <li>the <strong>browser and version</strong>, for a failure that only happens on
+  Firefox</li>
+  <li>the <strong>data row</strong>, if it came from a <code>@DataProvider</code></li>
+  <li>the <strong>page source</strong>, when the element was missing rather than
+  wrong</li>
+  <li>the <strong>browser console logs</strong>, which catch the JavaScript error behind a
+  blank page</li>
+</ul>
+
+<p>Framework brief criterion 4 is exactly this: "a failure produces enough evidence to
+diagnose it without rerunning". A screenshot is one piece of that, not the whole of
+it.</p>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="It is a temp file, deleted when the JVM exits. Copy the bytes somewhere you own or you have nothing after the run."
+  data-no="The file is real, but it lives in the system temp directory and is deleted on JVM exit. You have to copy it out.">
+  <p class="q">Why must you copy the result of
+  <code>getScreenshotAs(OutputType.FILE)</code>?</p>
+  <button class="opt">The file is locked while the driver runs</button>
+  <button class="opt">It is temporary and gets deleted</button>
+  <button class="opt">The bytes are not written until copied</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="A listener only gets an ITestResult, so a private field on your test class is unreachable. The driver has to live somewhere shared."
+  data-no="It is not about threads or timing here. The listener is handed an ITestResult and has no access to your test object's private fields.">
+  <p class="q">Why can a screenshot listener not read the <code>driver</code> field on
+  your test class?</p>
+  <button class="opt">The browser has already been quit by then</button>
+  <button class="opt">Listeners run on a separate thread entirely</button>
+  <button class="opt">It only receives the result, not your object</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="Swallow it. A failed screenshot is diagnostics, and it must not replace the real failure with a worse one."
+  data-no="Rethrowing loses the actual test failure and replaces it with a listener error, which is far harder to debug. This is the one place swallowing is right.">
+  <p class="q">The screenshot itself throws inside the listener. What should you do?</p>
+  <button class="opt">Swallow it, and log that it failed</button>
+  <button class="opt">Rethrow it so nothing is hidden</button>
+  <button class="opt">Retry the screenshot three times</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="Retried attempts fire onTestSkipped, so a listener implementing only onTestFailure never sees them."
+  data-no="The retry does run. The problem is the callback: a retried attempt is reported as skipped, not failed, so onTestFailure is never called for it.">
+  <p class="q">You use <code>IRetryAnalyzer</code> and get no screenshots for retried
+  attempts. Why?</p>
+  <button class="opt">The driver is quit before the retry runs</button>
+  <button class="opt">Those attempts fire onTestSkipped instead</button>
+  <button class="opt">Retries are excluded from all listeners</button>
+</div>
+
+<hr>
+
+<h2>Run it</h2>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml -Dtest=ScreenshotTest</code></pre>
+
+<p>Five tests, green, and a real <code>.png</code> lands in
+<code>target/screenshots/</code>.</p>
+
+<p>Then the part worth doing. Open <code>ScreenshotTest.java</code>, set
+<code>FAIL_ON_PURPOSE</code> to <code>true</code>, and rerun. One test fails, and the
+listener writes a second file:</p>
+
+<pre><code>SCREENSHOT  target/screenshots/ScreenshotTest.thisOneFails...-20260829-164835-309.png
+            (url was file:///.../pages/lesson4.html)</code></pre>
+
+<p>Note what that failing test contains about screenshots: nothing. That is the whole
+point of the listener. Set the constant back to <code>false</code> when you are done.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Selenium's
+  <a href="https://www.selenium.dev/documentation/webdriver/interactions/print_page/">Screenshots</a>
+  page, and the
+  <a href="https://www.selenium.dev/selenium/docs/api/java/org/openqa/selenium/TakesScreenshot.html">TakesScreenshot
+  javadoc</a>, which is where the "temp file, copy it" warning comes from.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p><code>ScreenshotTest.java</code>, plus
+  <code>support/ScreenshotListener.java</code> and
+  <code>support/DriverManager.java</code>, all new. Five tests, verified green, and the
+  listener verified by flipping the constant.</p>
+
+  <h3>Where this connects</h3>
+  <p><a href="../../testng/lessons/0007-listeners-reports-and-the-talk.html">TestNG
+  lesson 7</a> for <code>ITestListener</code> and the retry gotcha.
+  <a href="0003-oop-in-your-framework.html">Lesson 3</a> for why
+  <code>DriverManager</code> is shaped the way it is.
+  <a href="0004-explaining-your-framework.html">Lesson 4</a> beat 4 is where you say all
+  this out loud.</p>
+
+  <p class="nav">
+    <a href="0007-element-types.html">&larr; Lesson 7</a>
+    <a href="0004-explaining-your-framework.html">The framework talk</a>
+    <a href="0009-rapid-fire-answers.html">Lesson 9 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0007-element-types.html">&larr; Lesson 7</a><a href="../../index.html#selenium">All lessons</a><a href="0009-rapid-fire-answers.html">Lesson 9 &rarr;</a></p>
+</main>
+</body>
+</html>

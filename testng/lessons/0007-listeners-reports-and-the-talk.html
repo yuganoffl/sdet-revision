@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7 · Listeners, reports, and the talk</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0006-groups-and-parallel.html">&larr;</a><a class="tb-home" href="../../index.html#testng">TestNG</a><a class="tb-next" href="../reference/annotations-and-lifecycle.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 07 &middot; TestNG</p>
+<h1>Listeners, reports, and describing it out loud</h1>
+<p class="standfirst">The last lesson. Two thirds of it is code you can run, and the
+last third is the part that actually gets you hired: saying what you built, in order,
+without waffling.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. A listener watches every test without any test knowing about it.<br>
+  2. <code>onTestFailure</code> is where the screenshot goes.<br>
+  3. <code>IRetryAnalyzer</code> reruns a flaky test inside the same run, and the
+  retried attempts show up as <em>skips</em> in the report.<br>
+  4. Reports are already being written. You have just never opened them.</p>
+</div>
+
+<p>Everything below runs from
+<code>mvn test -Dsurefire.suiteXmlFiles=listeners.xml</code>.</p>
+
+<h2>What a listener is for</h2>
+
+<p>You want a screenshot on every failure. You could put a try/catch in all four
+hundred tests. Nobody does that. Instead you write one class that TestNG calls at
+every interesting moment, and the tests stay ignorant of it.</p>
+
+<p><code>ITestListener</code> is the one you will use. Six methods, and the names say
+what they do:</p>
+
+<div class="scroll-x">
+<table>
+  <caption>ITestListener</caption>
+  <tr><th>Method</th><th>Fires</th><th>Real use</th></tr>
+  <tr><td><code>onStart</code></td><td>before a <code>&lt;test&gt;</code> tag</td><td>start a report, note the environment</td></tr>
+  <tr><td><code>onTestStart</code></td><td>before each test method</td><td>log the name, start a timer</td></tr>
+  <tr><td><code>onTestSuccess</code></td><td>after a pass</td><td>mark it green in a custom report</td></tr>
+  <tr><td><code>onTestFailure</code></td><td>after a fail</td><td><strong>screenshot</strong>, page source, browser console log</td></tr>
+  <tr><td><code>onTestSkipped</code></td><td>after a skip</td><td>record why it never ran</td></tr>
+  <tr><td><code>onFinish</code></td><td>after the tag</td><td>close the report, print totals, email it</td></tr>
+</table>
+</div>
+
+<p><code>LoggingListener.java</code> in your repo implements all six. There is no
+browser in this project, so instead of a screenshot its <code>onTestFailure</code>
+appends to <code>target/test-failures.log</code>. Same hook, same idea, an artifact you
+can open afterwards.</p>
+
+<pre><code><span class="k">@Override</span> <span class="k">public void</span> onTestFailure(ITestResult result) {
+    System.out.println(<span class="s">"L>   FAIL    "</span> + result.getName());
+    <span class="c">// in a Selenium framework this line is the screenshot instead</span>
+    write(LocalTime.now() + <span class="s">"  "</span> + result.getTestClass().getName() + <span class="s">"."</span>
+            + result.getName() + <span class="s">"  ->  "</span> + result.getThrowable().getMessage());
+}</code></pre>
+
+<p>Flip <code>DEMO_FAILURE</code> to <code>true</code> in
+<code>ListenerDemoTest.java</code>, rerun, and the file appears:</p>
+
+<pre><code>14:02:37  com.sdet.studyplan.testng.ListenerDemoTest.failsOnPurpose
+          ->  deliberate failure for the listener demo expected [false] but found [true]</code></pre>
+
+<p><code>ITestResult</code> is the thing worth knowing. It carries the method name, the
+class, the throwable, the parameters from your lesson 4 data provider, timings, and the
+<code>ITestContext</code>. Everything a report needs comes off that object.</p>
+
+<h3>Three ways to register one</h3>
+
+<div class="scroll-x">
+<table>
+  <tr><th>How</th><th>Scope</th><th>When</th></tr>
+  <tr><td><code>@Listeners(LoggingListener.class)</code> on a class</td><td>that class</td><td>quick, and fine for a demo</td></tr>
+  <tr><td><code>&lt;listeners&gt;</code> in <code>testng.xml</code></td><td>the whole suite</td><td><strong>the normal choice.</strong> One place, no test touched</td></tr>
+  <tr><td><code>META-INF/services/org.testng.ITestNGListener</code></td><td>everything on the classpath</td><td>shipping a listener inside a shared jar</td></tr>
+</table>
+</div>
+
+<p><code>listeners.xml</code> uses the middle one:</p>
+
+<pre><code><span class="k">&lt;suite</span> name="ListenerDemo"<span class="k">&gt;</span>
+  <span class="k">&lt;listeners&gt;</span>
+    <span class="k">&lt;listener</span> class-name="com.sdet.studyplan.testng.LoggingListener"<span class="k">/&gt;</span>
+  <span class="k">&lt;/listeners&gt;</span>
+  ...</code></pre>
+
+<p>The other interfaces exist and are worth being able to name:
+<code>ISuiteListener</code> wraps the whole suite rather than a tag,
+<code>IInvokedMethodListener</code> fires around configuration methods too, and
+<code>IReporter</code> runs once at the very end with the complete results, which is
+what report libraries hook into.</p>
+
+<h2>Retrying a flaky test</h2>
+
+<p>Lesson 3 promised this. <code>testng-failed.xml</code> reruns failures in a second
+run you start by hand. <code>IRetryAnalyzer</code> retries inside the original run,
+before TestNG decides the verdict.</p>
+
+<pre><code><span class="k">public class</span> RetryAnalyzer <span class="k">implements</span> IRetryAnalyzer {
+
+    <span class="k">private static final int</span> MAX_RETRIES = 2;
+    <span class="k">private int</span> attempts = 0;
+
+    <span class="k">@Override</span> <span class="k">public boolean</span> retry(ITestResult result) {
+        <span class="k">if</span> (attempts &lt; MAX_RETRIES) {
+            attempts++;
+            <span class="k">return true</span>;        <span class="c">run it again</span>
+        }
+        <span class="k">return false</span>;            <span class="c">give up, report the failure</span>
+    }
+}</code></pre>
+
+<div class="warn">
+  <span class="lbl">The counter must not be static</span>
+  <p>TestNG creates one analyzer instance per test method, which is what makes a plain
+  field the right place for the count. Make it <code>static</code> and the first flaky
+  test in the run burns the retries for every other test.</p>
+</div>
+
+<p><code>ListenerDemoTest.passesOnThirdTry</code> fails twice then passes. Watch the
+listener and the analyzer interleave:</p>
+
+<pre><code>L>   start   passesOnThirdTry
+R> retrying passesOnThirdTry (attempt 2 of 3)
+<span class="hl">L>   skip    passesOnThirdTry</span>
+L>   start   passesOnThirdTry
+R> retrying passesOnThirdTry (attempt 3 of 3)
+<span class="hl">L>   skip    passesOnThirdTry</span>
+L>   start   passesOnThirdTry
+L>   pass    passesOnThirdTry
+L> done: passed=3 failed=0 <span class="hl">skipped=2</span></code></pre>
+
+<div class="warn">
+  <span class="lbl">Read that again, it is the interview question</span>
+  <p>A retried attempt fires <code>onTestSkipped</code>, <strong>not</strong>
+  <code>onTestFailure</code>. So a screenshot-on-failure listener takes no screenshot
+  for the attempts that were retried away. If you want evidence from every attempt, put
+  the capture in <code>onTestSkipped</code> too, or in the retry analyzer itself.</p>
+  <p>It also means Surefire's per-suite line reads
+  <code>Tests run: 5, Skipped: 2</code> while the final summary reads
+  <code>Tests run: 3, Skipped: 0</code>. Same run. The retried attempts are counted in
+  one place and not the other, and that discrepancy confuses everybody the first
+  time.</p>
+</div>
+
+<h3>Retry every test without editing any test</h3>
+
+<p>Putting <code>retryAnalyzer = RetryAnalyzer.class</code> on four hundred methods is
+not a plan. <code>IAnnotationTransformer</code> rewrites the annotation as TestNG reads
+each method:</p>
+
+<pre><code><span class="k">public class</span> RetryTransformer <span class="k">implements</span> IAnnotationTransformer {
+    <span class="k">@Override</span> <span class="k">public void</span> transform(ITestAnnotation annotation, Class testClass,
+                                    Constructor testConstructor, Method testMethod) {
+        annotation.setRetryAnalyzer(RetryAnalyzer.class);
+    }
+}</code></pre>
+
+<p>Register it as a listener, and every <code>@Test</code> in the suite gets retries
+with no source change. Uncomment the second <code>&lt;listener&gt;</code> line in
+<code>listeners.xml</code> to see it.</p>
+
+<div class="note">
+  <span class="lbl">A compile error you will hit</span>
+  <p>Those parameters are raw <code>Class</code> and <code>Constructor</code>, not
+  <code>Class&lt;?&gt;</code>. TestNG 7.7 declares them raw, so the tidier generic
+  version compiles to a different erasure and javac says <em>does not override or
+  implement a method from a supertype</em>. I hit it writing this lesson. Keep them
+  raw and add <code>@SuppressWarnings("rawtypes")</code>.</p>
+</div>
+
+<div class="win">
+  <span class="lbl">Have an opinion about retries</span>
+  <p>Retrying hides flakiness rather than fixing it, and a suite that passes on the
+  third attempt is a suite nobody trusts. The defensible position: retries are for
+  genuinely external flakiness like a network blip, they are capped at one or two, and
+  every retried test is logged so the flaky ones get fixed rather than tolerated. Say
+  that and you sound like you have maintained a suite, not just built one.</p>
+</div>
+
+<h2>The reports you already have</h2>
+
+<p>Every run has been writing these to <code>target/surefire-reports/</code>. Open
+them.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>What lands where</caption>
+  <tr><th>File</th><th>What it is</th></tr>
+  <tr><td><code>index.html</code></td><td>TestNG's own report. Clickable, per-tag, shows your <code>&lt;test&gt;</code> names from lesson 3</td></tr>
+  <tr><td><code>emailable-report.html</code></td><td>one self-contained page, built to paste into an email</td></tr>
+  <tr><td><code>&lt;SuiteName&gt;/&lt;TagName&gt;.xml</code></td><td>machine-readable results per tag</td></tr>
+  <tr><td><code>&lt;SuiteName&gt;/testng-failed.xml</code></td><td>lesson 3's rerun file</td></tr>
+  <tr><td><code>junitreports/TEST-*.xml</code></td><td>JUnit XML format. <strong>This is the one CI reads</strong>, in Jenkins, GitLab or GitHub Actions</td></tr>
+  <tr><td><code>*.txt</code></td><td>plain text summary per class</td></tr>
+</table>
+</div>
+
+<p>When someone asks how you report results, the honest and complete answer has three
+layers. TestNG writes the HTML for a human. It writes JUnit XML for the CI server,
+which is what turns a build red and draws the trend graph. And a listener adds whatever
+the built-in reports cannot know, which in a Selenium framework means screenshots
+attached to the failures.</p>
+
+<p>Two libraries get named a lot: <strong>ExtentReports</strong> and
+<strong>Allure</strong>. Both are listeners underneath. Knowing that they plug in
+through the same interface you just implemented is more useful than having used
+either.</p>
+
+<h2>Saying it out loud</h2>
+
+<p>This is the part that decides the interview. "Tell me about your framework" is not a
+knowledge question, it is a fluency question, and the failure mode is rambling through
+features in whatever order they occur to you.</p>
+
+<p>Answer in four beats. Sixty to ninety seconds. Then stop and let them dig.</p>
+
+<h3 class="step"><span class="n">Beat 1</span> Shape</h3>
+
+<p><em>Maven project, TestNG as the runner, Page Object Model for the UI layer. Test
+data lives in Excel and is read with Apache POI. Suites are defined in
+<code>testng.xml</code> so CI can pick which slice to run.</em></p>
+
+<h3 class="step"><span class="n">Beat 2</span> Lifecycle and state</h3>
+
+<p><em>A base class holds the setup. The driver is created in
+<code>@BeforeMethod</code> and stored in a <code>ThreadLocal</code> so the suite can run
+in parallel, and <code>@AfterMethod</code> quits it and calls <code>remove()</code> so
+the pool does not leak. Anything shared across the whole run, config and connections,
+goes in <code>@BeforeSuite</code>.</em></p>
+
+<h3 class="step"><span class="n">Beat 3</span> Data and selection</h3>
+
+<p><em>Data-driven tests use <code>@DataProvider</code>, reading rows from Excel, so one
+test method covers as many cases as the sheet has rows and each row is a separate
+result in the report. Tests are tagged with groups, so the pre-merge run is
+<code>smoke</code> and the nightly is everything.</em></p>
+
+<h3 class="step"><span class="n">Beat 4</span> Failures and reporting</h3>
+
+<p><em>An <code>ITestListener</code> takes a screenshot in
+<code>onTestFailure</code> and attaches it to the report. Failed tests can be rerun on
+their own from <code>testng-failed.xml</code>. CI reads the JUnit XML, so a failure
+turns the build red.</em></p>
+
+<div class="win">
+  <span class="lbl">Why this order works</span>
+  <p>It goes from the outside in: what it is, how it starts and stops, what it feeds
+  in, what happens when it breaks. Each beat leaves an obvious question hanging, so
+  the interviewer leads themselves into the follow-ups you already know:
+  <em>why ThreadLocal</em>, <em>why Excel and not JSON</em>, <em>what do you do about
+  flaky tests</em>.</p>
+</div>
+
+<h3>The follow-ups, one line each</h3>
+
+<div class="scroll-x">
+<table>
+  <caption>Have these ready</caption>
+  <tr><th>Question</th><th>The line</th></tr>
+  <tr><td>Difference between <code>@BeforeTest</code> and <code>@BeforeMethod</code>?</td><td><code>@BeforeMethod</code> runs before every test method. <code>@BeforeTest</code> runs once per <code>&lt;test&gt;</code> tag in the XML</td></tr>
+  <tr><td>What is a <code>&lt;test&gt;</code> tag?</td><td>a named bundle of classes, not a test case. It is also the unit of parallelism</td></tr>
+  <tr><td>Failed test versus skipped test?</td><td>failed ran and was wrong, skipped never ran, so it has proven nothing</td></tr>
+  <tr><td>How do you rerun only failures?</td><td>TestNG writes <code>testng-failed.xml</code>. Point the suite file at it</td></tr>
+  <tr><td>How do you handle flaky tests?</td><td><code>IRetryAnalyzer</code>, capped, and every retry logged so they get fixed</td></tr>
+  <tr><td>How do you run in parallel?</td><td><code>parallel</code> on the suite, plus <code>ThreadLocal</code> for the driver. The hard part is state, not the attribute</td></tr>
+  <tr><td><code>@DataProvider</code> versus <code>@Parameters</code>?</td><td>provider feeds test data row by row, parameters configure the run from the XML</td></tr>
+  <tr><td>How do you report results?</td><td>TestNG HTML for humans, JUnit XML for CI, a listener for screenshots</td></tr>
+</table>
+</div>
+
+<h2>Check yourself</h2>
+
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="3"
+  data-ok="A retried attempt is reported as skipped, so a listener keyed on failure never sees it."
+  data-no="Retried attempts fire onTestSkipped, not onTestFailure. The screenshot code never runs for them, which is why the evidence goes missing exactly when you want it.">
+  <p class="q">Your listener screenshots in <code>onTestFailure</code>. A test with a
+  retry analyzer fails twice, then passes. How many screenshots?</p>
+  <button class="opt">Two, one per failed attempt</button>
+  <button class="opt">Three, one per attempt</button>
+  <button class="opt">None</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="One instance per test method, so a plain field counts that method's attempts. Static would share the count across the suite."
+  data-no="TestNG creates one analyzer per test method. A static counter would be shared, so the first flaky test would use up everyone else's retries.">
+  <p class="q">Why must the attempt counter in an <code>IRetryAnalyzer</code> not be
+  <code>static</code>?</p>
+  <button class="opt">Static fields cannot be modified at runtime</button>
+  <button class="opt">One analyzer exists per test method</button>
+  <button class="opt">TestNG resets statics between methods</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="The JUnit XML in junitreports/ is the format CI servers parse to fail builds and draw trends."
+  data-no="CI does not read TestNG's HTML. It parses the JUnit XML that TestNG also writes, in junitreports/, which is what turns a build red.">
+  <p class="q">Which report file does your CI server actually read?</p>
+  <button class="opt">junitreports/TEST-*.xml</button>
+  <button class="opt">index.html</button>
+  <button class="opt">emailable-report.html</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="Registering in testng.xml applies it to the whole suite from one place, with no test class touched."
+  data-no="@Listeners on a class only covers that class, and you would repeat it everywhere. The suite XML applies it once to everything.">
+  <p class="q">Where do you register a listener in a real framework?</p>
+  <button class="opt">@Listeners on every test class</button>
+  <button class="opt">&lt;listeners&gt; in testng.xml</button>
+  <button class="opt">A static block in the base class</button>
+</div>
+
+<h2>What to do now</h2>
+
+<ul>
+  <li>run <code>listeners.xml</code> and read the <code>L&gt;</code> lines against the
+  table at the top of this lesson</li>
+  <li>flip <code>DEMO_FAILURE</code> to <code>true</code>, rerun, and open
+  <code>target/test-failures.log</code></li>
+  <li>uncomment the <code>RetryTransformer</code> listener and confirm every test now
+  retries, with no test file edited</li>
+  <li>open all three of <code>index.html</code>,
+  <code>emailable-report.html</code> and a file in <code>junitreports/</code>, so you
+  have actually seen what you are describing</li>
+  <li><strong>say the four beats out loud, timed.</strong> Not read. Said. If it takes
+  more than ninety seconds it is too long</li>
+</ul>
+
+<p>Then go back and finish the lesson 3 and 4 activities. They are the two you have not
+run yet, and the <code>&lt;test&gt;</code> tag experiment is the one that makes half of
+these answers stop being memorised.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p><a href="https://testng.org/index.html#_testng_listeners">TestNG Listeners</a> and
+  <a href="https://testng.org/index.html#_rerunning_failed_tests">Rerunning failed
+  tests</a> in the official documentation.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p>New: <code>LoggingListener.java</code>, <code>RetryAnalyzer.java</code>,
+  <code>RetryTransformer.java</code>, <code>ListenerDemoTest.java</code>,
+  <code>listeners.xml</code>. All pass as shipped.</p>
+
+  <h3>What comes next</h3>
+  <p>Phase 2, from <code>MISSION.md</code>: turning your seven Selenium scripts in
+  <code>src/main/java/.../selenium/</code> into a real suite. Every one of them is a
+  <code>public static void main</code> today. Converting them is what turns "I know
+  TestNG" into "I built this", and it revises Selenium for free.</p>
+
+  <p class="nav">
+    <a href="0006-groups-and-parallel.html">&larr; Lesson 6</a>
+    Mission
+    <span>Series complete</span>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0006-groups-and-parallel.html">&larr; Lesson 6</a><a href="../../index.html#testng">All lessons</a><a href="../reference/annotations-and-lifecycle.html">Reference &rarr;</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · TestNG annotations and lifecycle</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="../lessons/0007-listeners-reports-and-the-talk.html">&larr;</a><a class="tb-home" href="../../index.html#testng">TestNG</a><span class="tb-x"></span></div>
+<main class="sheet">
+
+<p class="eyebrow">Reference card &middot; TestNG 7.7.0</p>
+<h1>Annotations and lifecycle</h1>
+<p class="standfirst">Definitions quoted from testng.org. Execution output verified
+by running the code on this machine, 2026-08-25.</p>
+
+<h2>The configuration annotations</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>Official definitions &mdash; testng.org/index.html#_annotations</caption>
+  <tr><th>Annotation</th><th>"The annotated method will be run&hellip;"</th></tr>
+  <tr><td><code>@BeforeSuite</code></td><td>before all tests in this suite have run</td></tr>
+  <tr><td><code>@BeforeTest</code></td><td>before any test method belonging to the classes inside the <code>&lt;test&gt;</code> tag is run</td></tr>
+  <tr><td><code>@BeforeGroups</code></td><td>shortly before the first test method that belongs to any of these groups is invoked</td></tr>
+  <tr><td><code>@BeforeClass</code></td><td>before the first test method in the current class is invoked</td></tr>
+  <tr><td><code>@BeforeMethod</code></td><td>before each test method</td></tr>
+  <tr><td><code>@AfterMethod</code></td><td>after each test method</td></tr>
+  <tr><td><code>@AfterClass</code></td><td>after all the test methods in the current class have been run</td></tr>
+  <tr><td><code>@AfterGroups</code></td><td>shortly after the last test method that belongs to any of these groups is invoked</td></tr>
+  <tr><td><code>@AfterTest</code></td><td>after all the test methods belonging to the classes inside the <code>&lt;test&gt;</code> tag have run</td></tr>
+  <tr><td><code>@AfterSuite</code></td><td>after all tests in this suite have run</td></tr>
+</table>
+</div>
+
+<p>The other five annotations are not lifecycle: <code>@Test</code>,
+<code>@DataProvider</code>, <code>@Parameters</code>, <code>@Factory</code>,
+<code>@Listeners</code>.</p>
+
+<h2>Order, single class, two test methods</h2>
+
+<pre><code>@BeforeSuite
+  @BeforeTest
+    @BeforeClass
+      @BeforeMethod  -&gt;  testOne  -&gt;  @AfterMethod
+      @BeforeMethod  -&gt;  testTwo  -&gt;  @AfterMethod
+    @AfterClass
+  @AfterTest
+@AfterSuite</code></pre>
+
+<p><strong>Before</strong> methods run outside-in. <strong>After</strong> methods run
+inside-out. Only the <code>Method</code> pair repeats per test.</p>
+
+<h2>Order, two classes in one run</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>What repeats and what does not</caption>
+  <tr><th>Scope</th><th>Fires</th><th>Timing with 2 classes</th></tr>
+  <tr><td>Suite</td><td>once per annotated method</td><td>all of them, before any class starts</td></tr>
+  <tr><td>Test</td><td>once per annotated method per <code>&lt;test&gt;</code></td><td>all of them, before any class starts</td></tr>
+  <tr><td>Class</td><td>once per class</td><td>immediately before that class's own first test</td></tr>
+  <tr><td>Method</td><td>once per test method</td><td>wrapped around every single test</td></tr>
+</table>
+</div>
+
+<h2>Not guaranteed</h2>
+
+<ul>
+  <li><strong>Class order.</strong> Not alphabetical, not declaration order.</li>
+  <li><strong>Method order within a class.</strong> Not the order you typed them.
+  Use <code>priority</code> or <code>dependsOnMethods</code> to force it.</li>
+</ul>
+
+<h2>Where real setup goes</h2>
+
+<div class="scroll-x">
+<table>
+  <tr><th>Need</th><th>Scope</th></tr>
+  <tr><td>read config file, start driver server, open connection pool</td><td><code>@BeforeSuite</code></td></tr>
+  <tr><td>one environment shared by several classes</td><td><code>@BeforeTest</code></td></tr>
+  <tr><td>launch browser, log in once for related checks</td><td><code>@BeforeClass</code></td></tr>
+  <tr><td>reset state, clear cookies, go to a known page</td><td><code>@BeforeMethod</code></td></tr>
+  <tr><td>screenshot on failure, log out, clear test data</td><td><code>@AfterMethod</code></td></tr>
+  <tr><td>close pool, write summary</td><td><code>@AfterSuite</code></td></tr>
+</table>
+</div>
+
+<p>Trade to state out loud: wider scope is faster, narrower scope isolates failures
+better. Browser in <code>@BeforeClass</code>, reset in <code>@BeforeMethod</code> is
+the defensible default.</p>
+
+<h2>Traps</h2>
+
+<div class="warn">
+  <span class="lbl">Say these correctly</span>
+  <p><code>@BeforeTest</code> is not "before each <code>@Test</code>". That is
+  <code>@BeforeMethod</code>. <code>@BeforeTest</code> is tied to the
+  <code>&lt;test&gt;</code> tag in <code>testng.xml</code>.</p>
+  <p>A class not named <code>Test*</code>, <code>*Test</code>, <code>*Tests</code> or
+  <code>*TestCase</code> is invisible to Maven Surefire. Zero tests run, build green.</p>
+  <p>TestNG assertion order is <code>assertEquals(actual, expected)</code>. JUnit is
+  the reverse.</p>
+  <p>A test method with no assertion always passes. Passing means "did not throw".</p>
+</div>
+
+<div class="footer">
+  <p class="nav">
+    <a href="../lessons/0002-the-lifecycle-annotations.html">Lesson 2</a>
+    <a href="https://testng.org/index.html#_annotations">testng.org annotations</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="../lessons/0007-listeners-reports-and-the-talk.html">&larr; Lesson 7</a><a href="../../index.html#testng">All lessons</a></p>
+</main>
+</body>
+</html>

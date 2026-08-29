@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3 · OOP in your framework</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0002-waits.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0004-explaining-your-framework.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 03 &middot; Selenium</p>
+<h1>OOP, and where each concept actually lives</h1>
+<p class="standfirst">Interviewers ask "explain the four pillars" and get a textbook
+definition back from everybody. The answer that stands out names the pillar, then points
+at a line of framework code. This lesson gives you both halves for each one.</p>
+
+<div class="note">
+  <span class="lbl">How to answer any OOP question in an interview</span>
+  <p>Three sentences, in this order. <strong>What it means</strong>, in one line and in
+  your own words. <strong>Where it is in my framework</strong>, naming a class.
+  <strong>What it buys me</strong>, the problem it removes.</p>
+  <p>Definition alone sounds memorised. Definition plus a place sounds like you have
+  used it.</p>
+</div>
+
+<hr>
+
+<h2 id="abstraction">1. Abstraction</h2>
+
+<p><strong>What it means.</strong> Show what something does. Hide how it does it.</p>
+
+<p><strong>Where it lives, one:</strong> <code>WebDriver</code> itself. You have been
+using abstraction since lesson 1 without calling it that.</p>
+
+<pre><code>WebDriver driver = new ChromeDriver(options);</code></pre>
+
+<p><code>WebDriver</code> is an interface. It declares <code>get</code>,
+<code>findElement</code>, <code>quit</code>. It contains no code that drives a browser.
+<code>ChromeDriver</code> supplies that. Your variable is the interface type, so the rest
+of the test cannot tell which browser it has.</p>
+
+<p><strong>Where it lives, two:</strong> the page object. This is the one to lead
+with.</p>
+
+<pre><code>// The test says what the user does.
+loginPage.loginAs("yugan", "secret");
+
+// The page object owns how it is done.
+public HomePage loginAs(String user, String pass) {
+    type(USERNAME, user);
+    type(PASSWORD, pass);
+    click(SUBMIT);
+    return new HomePage(driver);
+}</code></pre>
+
+<p><strong>What it buys you.</strong> The login form gets redesigned. One method changes.
+The forty tests that log in do not.</p>
+
+<hr>
+
+<h2 id="encapsulation">2. Encapsulation</h2>
+
+<p><strong>What it means.</strong> Keep the data private. Let people reach it only
+through methods you control.</p>
+
+<p>People confuse this with abstraction constantly, so have the distinction ready.
+<em>Abstraction hides complexity. Encapsulation protects state.</em> Abstraction is a
+design idea; encapsulation is the <code>private</code> keyword doing a job.</p>
+
+<p><strong>Where it lives:</strong> the driver manager.</p>
+
+<pre><code>public final class DriverManager {
+
+    private static final ThreadLocal&lt;WebDriver&gt; DRIVER = new ThreadLocal&lt;&gt;();
+
+    public static WebDriver getDriver() { return DRIVER.get(); }
+
+    public static void set(WebDriver driver) { DRIVER.set(driver); }
+
+    public static void unload() {
+        if (DRIVER.get() != null) {
+            DRIVER.get().quit();
+            DRIVER.remove();          // nobody can forget this now
+        }
+    }
+}</code></pre>
+
+<p>The <code>ThreadLocal</code> is <code>private</code>. No test can touch it. That is
+what makes the <code>remove()</code> impossible to forget, which is the leak you saw in
+TestNG lesson 6.</p>
+
+<p><strong>Also here:</strong> locators in a page object are <code>private static final
+By</code>, never public. A test that could read <code>LoginPage.USERNAME</code> would
+start doing its own <code>findElement</code>, and the abstraction would rot within a
+month.</p>
+
+<div class="win">
+  <span class="lbl">The one-rule version, worth saying out loud</span>
+  <p>"Nothing in my <code>tests</code> package imports Selenium. No <code>By</code>, no
+  <code>WebElement</code>, no <code>WebDriver</code>. If a test needs one, my page object
+  is missing a method." That single sentence demonstrates encapsulation, abstraction and
+  design taste at once.</p>
+</div>
+
+<hr>
+
+<h2 id="inheritance">3. Inheritance</h2>
+
+<p><strong>What it means.</strong> A class takes on the fields and methods of a parent,
+so shared code is written once.</p>
+
+<p><strong>Where it lives, one:</strong> <code>BaseTest</code>. Every test class extends
+it, so the browser lifecycle is written once instead of forty times.</p>
+
+<pre><code>public abstract class BaseTest {
+
+    @BeforeMethod(alwaysRun = true)
+    public void startBrowser() {
+        DriverManager.set(DriverFactory.create(Config.browser()));
+    }
+
+    @AfterMethod(alwaysRun = true)
+    public void stopBrowser() {
+        DriverManager.unload();
+    }
+}
+
+public class LoginTest extends BaseTest { ... }</code></pre>
+
+<p><strong>Where it lives, two:</strong> <code>BasePage</code>, holding the driver, the
+wait, and the shared <code>click</code> and <code>type</code> helpers that every page
+needs.</p>
+
+<p><strong>What it buys you.</strong> One place to change how every test starts a
+browser. One place that owns every wait in the framework.</p>
+
+<div class="warn">
+  <span class="lbl">The follow-up they ask next: composition over inheritance</span>
+  <p>Inheritance is for "is a". A <code>LoginTest</code> <em>is a</em> test. A
+  <code>LoginPage</code> <em>is a</em> page. Fine.</p>
+  <p>A header, a nav bar or a modal is not a page, and it appears on twenty pages. Do not
+  inherit it. <strong>Compose</strong> it: the page holds one as a field.</p>
+<pre><code>public class HomePage extends BasePage {
+    public final Header header = new Header(driver);   // composed, not inherited
+}</code></pre>
+  <p>Deep inheritance chains are the classic framework smell. Two levels is plenty.</p>
+</div>
+
+<hr>
+
+<h2 id="polymorphism">4. Polymorphism</h2>
+
+<p><strong>What it means.</strong> One name, many behaviours. It comes in two kinds and
+you should name both.</p>
+
+<h3>Runtime polymorphism (overriding)</h3>
+
+<p>The reference type is fixed at compile time. The object behind it is decided while
+running. <strong>This is how cross-browser works</strong>, and it is the best example you
+have.</p>
+
+<pre><code>public static WebDriver create(Browser browser) {
+    switch (browser) {
+        case CHROME:  return new ChromeDriver(chromeOptions());
+        case FIREFOX: return new FirefoxDriver(firefoxOptions());
+        case EDGE:    return new EdgeDriver(edgeOptions());
+    }
+}</code></pre>
+
+<p>Every branch returns a different class. The caller gets a <code>WebDriver</code> and
+cannot tell them apart. <code>driver.findElement(...)</code> runs Chrome's code or
+Firefox's code depending on what is actually there. Nothing in a test or a page object
+changes.</p>
+
+<p>Say this and you have answered "how does your framework do cross-browser?" and
+"explain polymorphism" with one example.</p>
+
+<h3>Compile-time polymorphism (overloading)</h3>
+
+<p>Same method name, different parameters. The compiler picks.</p>
+
+<pre><code>protected void click(By locator) { click(locator, Config.defaultTimeout()); }
+
+protected void click(By locator, Duration timeout) { ... }</code></pre>
+
+<table>
+  <thead><tr><th></th><th>Overloading</th><th>Overriding</th></tr></thead>
+  <tbody>
+    <tr><td>Same method name</td><td>yes</td><td>yes</td></tr>
+    <tr><td>Parameters</td><td>must differ</td><td>must be identical</td></tr>
+    <tr><td>Where</td><td>usually one class</td><td>parent and child</td></tr>
+    <tr><td>Decided</td><td>at compile time</td><td>at runtime</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="extras">The three follow-ups that come next</h2>
+
+<h3>Interface or abstract class?</h3>
+
+<p>You have one of each in the framework, which makes this easy to answer
+concretely.</p>
+
+<p><strong>Interface</strong> is a contract with no state. Use it when unrelated classes
+need to promise the same behaviour. <code>WebDriver</code> is one:
+<code>ChromeDriver</code> and <code>FirefoxDriver</code> share no parent worth having, and
+a class can implement many interfaces.</p>
+
+<p><strong>Abstract class</strong> is a partly-built parent that holds shared state.
+<code>BaseTest</code> is one: it has a real <code>@BeforeMethod</code> body and it makes
+no sense to instantiate on its own. A class can extend only one.</p>
+
+<p>One line to say: "Interface when I need a contract, abstract class when I have shared
+code and shared state to hand down."</p>
+
+<h3>static versus instance</h3>
+
+<p>Both are in <code>DriverManager</code>, and the reason is worth knowing.
+<code>ThreadLocal</code> is <code>static</code> so there is exactly one holder for the
+whole run, reachable from anywhere without passing a driver around. The value
+<em>inside</em> it is per thread. So the holder is shared and the driver is not, which is
+precisely the trick that makes parallel runs safe.</p>
+
+<h3>Why final on the locators?</h3>
+
+<p><code>private static final By USERNAME = By.id("user");</code> &mdash;
+<code>static</code> because the locator is the same for every instance,
+<code>final</code> because nothing should ever reassign it, <code>private</code> because
+of the rule above.</p>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="Abstraction hides complexity behind a simpler surface. Encapsulation uses access modifiers to protect state."
+  data-no="Abstraction is about hiding how something works. Encapsulation is about keeping data private and controlling access to it. Different jobs.">
+  <p class="q">What is the difference between abstraction and encapsulation?</p>
+  <button class="opt">They are two names for one idea</button>
+  <button class="opt">One hides complexity, one protects state</button>
+  <button class="opt">One is runtime, the other compile time</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="Runtime polymorphism. One reference type, a different implementation behind it, chosen while the suite runs."
+  data-no="It is polymorphism, decided at runtime. The variable is a WebDriver at compile time; which driver class it really holds is settled when the factory runs.">
+  <p class="q">A factory returns <code>ChromeDriver</code> or <code>FirefoxDriver</code> as
+  a <code>WebDriver</code>. Which concept?</p>
+  <button class="opt">Encapsulation, because the class is hidden</button>
+  <button class="opt">Overloading, because the name is shared</button>
+  <button class="opt">Polymorphism, resolved when it runs</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="Composition. A header is not a kind of page, and it appears on many pages, so the page holds one as a field."
+  data-no="Not inheritance. A header is not a kind of page, so it fails the is-a test. Hold it as a field on the pages that show it.">
+  <p class="q">A site header appears on twenty pages. How should a page object get
+  it?</p>
+  <button class="opt">Hold it as a field, by composition</button>
+  <button class="opt">Extend a HeaderPage parent class</button>
+  <button class="opt">Copy its locators into every page</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="One shared holder, one value per thread. That split is exactly what makes a parallel run safe."
+  data-no="The static holder is shared by the whole run on purpose, so any class can reach it. What is not shared is the value inside, which is per thread.">
+  <p class="q">Why is the <code>ThreadLocal</code> in <code>DriverManager</code> declared
+  <code>static</code>?</p>
+  <button class="opt">So each thread builds its own holder</button>
+  <button class="opt">So one holder serves every class</button>
+  <button class="opt">So the driver is never garbage collected</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="Abstract class. It carries a real method body and shared state, and instantiating it alone would be meaningless."
+  data-no="An interface cannot hold the driver field or a real @BeforeMethod body. Shared state and shared code mean abstract class.">
+  <p class="q"><code>BaseTest</code> holds a driver field and a real
+  <code>@BeforeMethod</code> body. Interface or abstract class?</p>
+  <button class="opt">Interface, so tests can implement many</button>
+  <button class="opt">Either one works equally well here</button>
+  <button class="opt">Abstract class, it has shared state</button>
+</div>
+
+<hr>
+
+<h2>Say it out loud</h2>
+
+<p>Pick each pillar in turn and give the three sentences: meaning, place, benefit. Time
+yourself. Each one should take about fifteen seconds, so all four plus the follow-ups is
+under two minutes.</p>
+
+<p>If you can only hold one example per pillar tonight, hold these:</p>
+
+<table>
+  <thead><tr><th>Pillar</th><th>Your one example</th></tr></thead>
+  <tbody>
+    <tr><td>Abstraction</td><td>the page object method, <code>loginAs()</code></td></tr>
+    <tr><td>Encapsulation</td><td>the private <code>ThreadLocal</code> in <code>DriverManager</code></td></tr>
+    <tr><td>Inheritance</td><td><code>BaseTest</code>, so the browser lifecycle is written once</td></tr>
+    <tr><td>Polymorphism</td><td>the driver factory returning three browsers as one type</td></tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Oracle's <a href="https://docs.oracle.com/javase/tutorial/java/concepts/">Object-Oriented
+  Programming Concepts</a> for the definitions, and Selenium's
+  <a href="https://www.selenium.dev/documentation/test_practices/encouraged/page_object_models/">Page
+  object models</a> for the design rule. The Selenium page is the source of "Page Objects
+  should seldom expose the underlying WebDriver instance".</p>
+
+  <h3>A caveat worth knowing</h3>
+  <p>The code on this page is the framework you are <em>going</em> to build, starting
+  Monday. It is not checked into this repo yet. Describe it as a design you can defend,
+  not as something you have running. <a href="0004-explaining-your-framework.html">Lesson
+  4</a> handles exactly how to say that honestly.</p>
+
+  <h3>Stuck?</h3>
+  <p>Ask me. Worth asking: "what is the difference between an abstract class with no
+  abstract methods and a normal class?" Interviewers use that one to see whether you
+  memorised the rule or understood it.</p>
+
+  <p class="nav">
+    <a href="0002-waits.html">&larr; Lesson 2</a>
+    Framework brief
+    <a href="0004-explaining-your-framework.html">Lesson 4 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0002-waits.html">&larr; Lesson 2</a><a href="../../index.html#selenium">All lessons</a><a href="0004-explaining-your-framework.html">Lesson 4 &rarr;</a></p>
+</main>
+</body>
+</html>

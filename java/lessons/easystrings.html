@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strings and numbers &middot; Java</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><span class="tb-x"></span><a class="tb-home" href="../../index.html#java">Java</a><a class="tb-next" href="easyarrays.html">&rarr;</a></div>
+<main class="sheet">
+<p class="eyebrow">Java &middot; 20 programs</p>
+<h1>Strings and numbers</h1>
+<p class="standfirst">Reversal, counting, palindromes, primes, factorials. Tap a program to open its code.
+Every one of these is your own, written with plain loops.</p>
+<p class="chips"><a href="#anagram">Anagram</a><a href="#armstrongnumber">Armstrong number</a><a href="#countcharacterfrequency">Count character frequency</a><a href="#countspecificcharacter">Count specific character</a><a href="#countvowelsperword">Count vowels per word</a><a href="#countwordoccurrences">Count word occurrences</a><a href="#duplicatecharacters">Duplicate characters</a><a href="#factorial">Factorial</a><a href="#fibonacciseries">Fibonacci series</a><a href="#firstandlastnonrepeatedchar">First and last non repeated char</a><a href="#longestandshortestword">Longest and shortest word</a><a href="#mostfrequentcharacter">Most frequent character</a><a href="#primenumber">Prime number</a><a href="#removeduplicatesfromstring">Remove duplicates from string</a><a href="#reversethenumber">Reverse the number</a><a href="#reversethesentence">Reverse the sentence</a><a href="#reversethestring">Reverse the string</a><a href="#separatecharactertypes">Separate character types</a><a href="#sumofdigits">Sum of digits</a><a href="#swapcharactercase">Swap character case</a></p>
+<p class="chips-actions"><button type="button" id="openall">Open all</button>
+<button type="button" id="shutall">Close all</button></p>
+<details id="anagram" class="prog"><summary><b>Anagram</b><span>Check whether two strings are ANAGRAMS — meaning they contain exactly the same characters the same number of times, just rearranged.</span></summary><p class="filename">Anagram.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Check whether two strings are ANAGRAMS — meaning they contain
+ * exactly the same characters the same number of times, just rearranged.
+ *
+ * Examples:
+ *   &quot;silent&quot; and &quot;listen&quot; -&gt; true
+ *   &quot;hello&quot;  and &quot;world&quot;  -&gt; false
+ *
+ * Quick sanity check both approaches rely on: if the lengths differ, the
+ * strings can never be anagrams, so we bail out early.
+ */
+public class Anagram {
+
+    /**
+     * Approach 1: Sort both and compare (simplest to write).
+     *
+     * Idea: anagrams are the same letters in a different order — so if we
+     * sort the letters of both words, anagrams become IDENTICAL strings.
+     * Arrays.sort() sorts a char[] in place, Arrays.equals() compares two
+     * arrays element by element.
+     */
+    public static boolean usingSorting(String first, String second) {
+        if (first.length() != second.length()) {
+            return false; // different lengths -&gt; can never be anagrams
+        }
+
+        char[] firstChars = first.toCharArray();
+        char[] secondChars = second.toCharArray();
+
+        Arrays.sort(firstChars);
+        Arrays.sort(secondChars);
+
+        return Arrays.equals(firstChars, secondChars);
+    }
+
+    /**
+     * Approach 2: Count letters up and back down.
+     *
+     * Idea: use a small table with one slot per letter (a..z). Walk the
+     * first word adding +1 per letter, walk the second subtracting -1.
+     * For true anagrams every slot ends back at exactly 0.
+     * Note: this table only covers lowercase a-z; for mixed-case or
+     * punctuation, normalize first (toLowerCase) or count with a HashMap.
+     */
+    public static boolean usingLetterCounts(String first, String second) {
+        if (first.length() != second.length()) {
+            return false;
+        }
+
+        int[] letterCounts = new int[26]; // one slot per letter, all start at 0
+
+        for (int i = 0; i &lt; first.length(); i++) {
+            letterCounts[first.charAt(i) - &#x27;a&#x27;]++;  // &#x27;c&#x27; - &#x27;a&#x27; = 2 -&gt; slot for &quot;c&quot;
+            letterCounts[second.charAt(i) - &#x27;a&#x27;]--;
+        }
+
+        for (int count : letterCounts) {
+            if (count != 0) {
+                return false; // some letter appears a different number of times
+            }
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(&quot;silent / listen&quot;);
+        System.out.println(&quot;  Sorting:      &quot; + usingSorting(&quot;silent&quot;, &quot;listen&quot;));
+        System.out.println(&quot;  Letter count: &quot; + usingLetterCounts(&quot;silent&quot;, &quot;listen&quot;));
+
+        System.out.println(&quot;hello / world&quot;);
+        System.out.println(&quot;  Sorting:      &quot; + usingSorting(&quot;hello&quot;, &quot;world&quot;));
+        System.out.println(&quot;  Letter count: &quot; + usingLetterCounts(&quot;hello&quot;, &quot;world&quot;));
+    }
+}</code></pre></details><details id="armstrongnumber" class="prog"><summary><b>Armstrong number</b><span>Check whether a number is an ARMSTRONG NUMBER — a number that equals the sum of its own digits, each raised to the power of the number of digits.</span></summary><p class="filename">ArmstrongNumber.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Check whether a number is an ARMSTRONG NUMBER — a number that
+ * equals the sum of its own digits, each raised to the power of the
+ * number of digits.
+ *
+ * Examples:
+ *   153 -&gt; 1^3 + 5^3 + 3^3 = 1 + 125 + 27 = 153   -&gt; true
+ *   9474 -&gt; 9^4 + 4^4 + 7^4 + 4^4 = 9474          -&gt; true
+ *   123 -&gt; 1^3 + 2^3 + 3^3 = 36                   -&gt; false
+ */
+public class ArmstrongNumber {
+
+    /**
+     * Approach 1: Count digits with math, then sum the powers.
+     *
+     * Idea: two passes with the % 10 / / 10 digit-peeling pair. Pass 1
+     * counts how many digits there are; pass 2 adds up each digit raised
+     * to that count. Math.pow() returns a double, so we cast back to
+     * int — fine here because the values involved are small and exact.
+     */
+    public static boolean usingMath(int num) {
+        int digits = 0;
+        for (int temp = num; temp != 0; temp /= 10) {
+            digits++;
+        }
+
+        int sum = 0;
+        for (int temp = num; temp != 0; temp /= 10) {
+            int digit = temp % 10;
+            sum += (int) Math.pow(digit, digits); // Math.pow gives double -&gt; cast
+        }
+
+        return sum == num;
+    }
+
+    /**
+     * Approach 2: Count digits via the string form.
+     *
+     * Idea: identical power-sum logic, but the digit count comes from
+     * String.valueOf(num).length() instead of a counting loop. Handy
+     * when you find string conversion easier to read than a temp loop.
+     */
+    public static boolean usingStringLength(int num) {
+        int digits = String.valueOf(num).length();
+
+        int sum = 0;
+        for (int temp = num; temp != 0; temp /= 10) {
+            int digit = temp % 10;
+            sum += (int) Math.pow(digit, digits);
+        }
+
+        return sum == num;
+    }
+
+    public static void main(String[] args) {
+        int[] samples = { 153, 9474, 123 };
+
+        for (int n : samples) {
+            System.out.println(n + &quot;: math -&gt; &quot; + usingMath(n)
+                    + &quot;, string length -&gt; &quot; + usingStringLength(n));
+        }
+    }
+}</code></pre></details><details id="countcharacterfrequency" class="prog"><summary><b>Count character frequency</b><span>Count how many times each character appears in a string (character frequency). As a bonus, group characters BY their frequency.</span></summary><p class="filename">CountCharacterFrequency.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Problem: Count how many times each character appears in a string
+ * (character frequency). As a bonus, group characters BY their frequency.
+ *
+ * Example for &quot;programming&quot;:
+ *   Frequency: p=1, r=2, o=1, g=2, a=1, m=2, i=1, n=1
+ *   Grouped:   1=[p, o, a, i, n], 2=[r, g, m]
+ *
+ * Java terms worth learning here:
+ * - HashMap stores key -&gt; value pairs; here character -&gt; its count.
+ * - LinkedHashMap is a HashMap that remembers INSERTION ORDER, so the
+ *   output lists characters in the order they first appeared.
+ * - Map.Entry is one key-value pair inside a map; entrySet() lets you
+ *   loop over all of them.
+ */
+public class CountCharacterFrequency {
+
+    /**
+     * Approach 1: Nested loops — no map at all.
+     *
+     * Idea: for each position, first check whether the character already
+     * appeared EARLIER (inner loop over the positions before it). If it
+     * did, skip — it was already reported. Otherwise count its
+     * occurrences by scanning forward. Pure loops, no collections.
+     */
+    public static void usingNestedLoops(String text) {
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+
+            boolean seenEarlier = false;
+            for (int j = 0; j &lt; i; j++) {
+                if (text.charAt(j) == ch) {
+                    seenEarlier = true;
+                    break;
+                }
+            }
+            if (seenEarlier) {
+                continue; // this character was already counted and printed
+            }
+
+            int count = 0;
+            for (int j = i; j &lt; text.length(); j++) {
+                if (text.charAt(j) == ch) {
+                    count++;
+                }
+            }
+            System.out.println(ch + &quot; -&gt; &quot; + count);
+        }
+    }
+
+    /**
+     * Approach 2: The visited[] array technique — still no map.
+     *
+     * Idea: same nested counting, but instead of re-scanning backwards
+     * to check &quot;seen earlier&quot;, we mark every matched position in a
+     * parallel boolean array so the outer loop skips it later. This is
+     * the classic &quot;visited&quot; pattern you will also see in
+     * easyarrays.CountArrayElement.
+     */
+    public static void usingVisitedArray(String text) {
+        char[] chars = text.toCharArray();
+        boolean[] visited = new boolean[chars.length];
+
+        for (int i = 0; i &lt; chars.length; i++) {
+            if (visited[i]) {
+                continue; // already counted inside an earlier group
+            }
+
+            int count = 1;
+            for (int j = i + 1; j &lt; chars.length; j++) {
+                if (chars[i] == chars[j]) {
+                    count++;
+                    visited[j] = true; // don&#x27;t recount this position later
+                }
+            }
+            System.out.println(chars[i] + &quot; -&gt; &quot; + count);
+        }
+    }
+
+    /**
+     * Approach 3: HashMap with the classic containsKey check.
+     *
+     * Idea: for each character ask &quot;have I counted you before?&quot; If yes,
+     * bump the stored count; if no, start it at 1. This is the verbose
+     * version every Java developer should be able to write from memory.
+     */
+    public static Map&lt;Character, Integer&gt; usingContainsKey(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+
+        for (char ch : text.toCharArray()) {
+            if (frequency.containsKey(ch)) {
+                frequency.put(ch, frequency.get(ch) + 1); // seen before -&gt; add 1
+            } else {
+                frequency.put(ch, 1); // first sighting -&gt; start at 1
+            }
+        }
+        return frequency;
+    }
+
+    /**
+     * Approach 4: Same idea, modern one-liner with merge() (Java 8+).
+     *
+     * Idea: map.merge(key, 1, Integer::sum) means &quot;store 1 if the key is
+     * absent, otherwise add 1 to whatever is already there&quot;. One line
+     * replaces the whole if/else — worth recognizing when you read other
+     * people&#x27;s code.
+     */
+    public static Map&lt;Character, Integer&gt; usingMerge(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+
+        for (char ch : text.toCharArray()) {
+            frequency.merge(ch, 1, Integer::sum);
+        }
+        return frequency;
+    }
+
+    /**
+     * Bonus: flip the frequency map around — group characters by how many
+     * times they appear.
+     *
+     * Idea: build a new map of count -&gt; list of characters with that
+     * count. computeIfAbsent(count, k -&gt; new ArrayList&lt;&gt;()) creates the
+     * list the first time a count appears, then we just add to it.
+     */
+    public static Map&lt;Integer, List&lt;Character&gt;&gt; groupByFrequency(Map&lt;Character, Integer&gt; frequency) {
+        Map&lt;Integer, List&lt;Character&gt;&gt; grouped = new LinkedHashMap&lt;&gt;();
+
+        for (Map.Entry&lt;Character, Integer&gt; entry : frequency.entrySet()) {
+            char ch = entry.getKey();
+            int count = entry.getValue();
+
+            grouped.computeIfAbsent(count, k -&gt; new ArrayList&lt;&gt;()).add(ch);
+        }
+        return grouped;
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;programming&quot;;
+
+        System.out.println(&quot;Nested loops (no map):&quot;);
+        usingNestedLoops(input);
+
+        System.out.println(&quot;Visited array (no map):&quot;);
+        usingVisitedArray(input);
+
+        System.out.println(&quot;containsKey: &quot; + usingContainsKey(input));
+        System.out.println(&quot;merge:       &quot; + usingMerge(input));
+        System.out.println(&quot;grouped:     &quot; + groupByFrequency(usingMerge(input)));
+    }
+}</code></pre></details><details id="countspecificcharacter" class="prog"><summary><b>Count specific character</b><span>Count how many times ONE specific character appears in a string.</span></summary><p class="filename">CountSpecificCharacter.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Count how many times ONE specific character appears in a
+ * string.
+ *
+ * Example:
+ *   Input:  &quot;banana&quot;, target &#x27;a&#x27;
+ *   Output: 3
+ */
+public class CountSpecificCharacter {
+
+    /**
+     * Approach 1: Loop and count.
+     *
+     * Idea: walk the string one character at a time and bump a counter
+     * every time the character matches the target. The most direct
+     * translation of the problem into code.
+     */
+    public static int usingLoop(String text, char target) {
+        int count = 0;
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            if (text.charAt(i) == target) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Approach 2: The length-difference trick.
+     *
+     * Idea: delete every occurrence of the target from a COPY of the
+     * string; the number of deleted characters is original length minus
+     * new length. Note replace() takes a literal character here, while
+     * its cousin replaceAll() takes a regex pattern.
+     */
+    public static int usingLengthDifference(String text, char target) {
+        String withoutTarget = text.replace(String.valueOf(target), &quot;&quot;);
+        return text.length() - withoutTarget.length();
+    }
+
+    /**
+     * Approach 3: Java 8 Streams.
+     *
+     * Idea: text.chars() turns the string into an IntStream of its
+     * characters (as int codes — that is why we compare with the char
+     * directly). filter() keeps only matches, count() tallies them.
+     * count() returns a long, so we cast back to int.
+     */
+    public static int usingStreams(String text, char target) {
+        return (int) text.chars()
+                .filter(ch -&gt; ch == target)
+                .count();
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;banana&quot;;
+        char target = &#x27;a&#x27;;
+
+        System.out.println(&quot;Loop:              &quot; + usingLoop(input, target));
+        System.out.println(&quot;Length difference: &quot; + usingLengthDifference(input, target));
+        System.out.println(&quot;Streams:           &quot; + usingStreams(input, target));
+    }
+}</code></pre></details><details id="countvowelsperword" class="prog"><summary><b>Count vowels per word</b><span>For each word in a sentence, count how many vowels it has.</span></summary><p class="filename">CountVowelsPerWord.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Problem: For each word in a sentence, count how many vowels it has.
+ *
+ * Example:
+ *   Input:  &quot;I love java programming&quot;
+ *   Output: I = 1
+ *           love = 2
+ *           java = 2
+ *           programming = 3
+ */
+public class CountVowelsPerWord {
+
+    /**
+     * Approach 1: A loop inside a loop.
+     *
+     * Idea: the OUTER loop walks the words. For each word we reset count to
+     * 0, then the INNER loop walks that word&#x27;s characters and adds 1 every
+     * time it sees a vowel. Resetting count inside the outer loop is the
+     * important bit — that is what makes the count &quot;per word&quot; instead of a
+     * running total for the whole sentence.
+     *
+     * Note toLowerCase: without it the capital &#x27;I&#x27; in &quot;I love&quot; would not
+     * match &#x27;i&#x27; and the first word would print 0.
+     */
+    public static void usingNestedLoops(String sentence) {
+        String[] words = sentence.split(&quot; &quot;);
+
+        for (String word : words) {
+            int count = 0;
+
+            for (int i = 0; i &lt; word.length(); i++) {
+                char ch = Character.toLowerCase(word.charAt(i));
+
+                if (ch == &#x27;a&#x27; || ch == &#x27;e&#x27; || ch == &#x27;i&#x27; || ch == &#x27;o&#x27; || ch == &#x27;u&#x27;) {
+                    count++;
+                }
+            }
+
+            System.out.println(word + &quot; = &quot; + count);
+        }
+    }
+
+    /**
+     * Approach 2: Same loops, shorter vowel check.
+     *
+     * Idea: instead of five == comparisons, keep the vowels in one string and
+     * ask if it contains the character. &quot;aeiou&quot;.indexOf(ch) gives the position
+     * of ch, or -1 when it is not there. Positions start at 0, so &quot;&gt;= 0&quot; means
+     * it was found, which means it is a vowel.
+     */
+    public static void usingVowelString(String sentence) {
+        String vowels = &quot;aeiou&quot;;
+        String[] words = sentence.split(&quot; &quot;);
+
+        for (String word : words) {
+            int count = 0;
+
+            for (int i = 0; i &lt; word.length(); i++) {
+                char ch = Character.toLowerCase(word.charAt(i));
+
+                if (vowels.indexOf(ch) &gt;= 0) {
+                    count++;
+                }
+            }
+
+            System.out.println(word + &quot; = &quot; + count);
+        }
+    }
+
+    /**
+     * Approach 3: Store the answers in a map instead of printing them.
+     *
+     * Idea: same two loops, but instead of printing straight away we save
+     * word -&gt; count with put(). Now the caller can use the counts for
+     * something else, which is usually what an interviewer wants next.
+     *
+     * LinkedHashMap keeps the words in sentence order. A plain HashMap would
+     * jumble them and the output would not read like the sentence any more.
+     */
+    public static Map&lt;String, Integer&gt; usingMap(String sentence) {
+        Map&lt;String, Integer&gt; result = new LinkedHashMap&lt;&gt;();
+        String vowels = &quot;aeiou&quot;;
+
+        for (String word : sentence.split(&quot; &quot;)) {
+            int count = 0;
+
+            for (int i = 0; i &lt; word.length(); i++) {
+                char ch = Character.toLowerCase(word.charAt(i));
+
+                if (vowels.indexOf(ch) &gt;= 0) {
+                    count++;
+                }
+            }
+
+            result.put(word, count);
+        }
+
+        return result;
+    }
+
+    public static void main(String[] args) {
+        String sentence = &quot;I love java programming&quot;;
+
+        System.out.println(&quot;Nested loops:&quot;);
+        usingNestedLoops(sentence);
+
+        System.out.println();
+        System.out.println(&quot;Vowel string:&quot;);
+        usingVowelString(sentence);
+
+        System.out.println();
+        System.out.println(&quot;Map:&quot;);
+        Map&lt;String, Integer&gt; counts = usingMap(sentence);
+
+        // Walking a map: each entry has a getKey() and a getValue().
+        for (Map.Entry&lt;String, Integer&gt; entry : counts.entrySet()) {
+            System.out.println(entry.getKey() + &quot; = &quot; + entry.getValue());
+        }
+    }
+}</code></pre></details><details id="countwordoccurrences" class="prog"><summary><b>Count word occurrences</b><span>Count how many times a word or substring appears in a string.</span></summary><p class="filename">CountWordOccurrences.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Count how many times a word or substring appears in a string.
+ *
+ * Examples:
+ *   &quot;java is fun and java is powerful&quot;, word &quot;java&quot;      -&gt; 2
+ *   &quot;banana&quot;,                          substring &quot;ana&quot;    -&gt; 1 (non-overlapping)
+ *
+ * The two approaches answer slightly different questions: whole-WORD
+ * matches vs raw SUBSTRING matches. Pick based on which one is asked.
+ */
+public class CountWordOccurrences {
+
+    /**
+     * Approach 1: Split into words and count exact matches.
+     *
+     * Idea: split the sentence on whitespace (&quot;\\s+&quot; means &quot;one or more
+     * whitespace characters&quot;), then count the words that equal() the
+     * target exactly. This is a WORD match — searching for &quot;java&quot; will
+     * not match &quot;javascript&quot;.
+     */
+    public static int usingSplit(String sentence, String word) {
+        int count = 0;
+
+        for (String current : sentence.split(&quot;\\s+&quot;)) {
+            if (current.equals(word)) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Approach 2: Hop match to match with indexOf.
+     *
+     * Idea: indexOf(target, fromIndex) finds the next occurrence at or
+     * after a position, or -1 when there are no more. Each time it
+     * hits, we count and jump the search position past this match. This
+     * is a SUBSTRING match — it sees &quot;ana&quot; inside &quot;banana&quot; regardless
+     * of word boundaries.
+     */
+    public static int usingIndexOf(String text, String target) {
+        int count = 0;
+        int fromIndex = 0;
+
+        while ((fromIndex = text.indexOf(target, fromIndex)) != -1) {
+            count++;
+            fromIndex += target.length(); // jump past this match (non-overlapping)
+        }
+
+        return count;
+    }
+
+    public static void main(String[] args) {
+        String sentence = &quot;java is fun and java is powerful&quot;;
+
+        System.out.println(&quot;Word \&quot;java\&quot; (split):       &quot; + usingSplit(sentence, &quot;java&quot;));
+        System.out.println(&quot;Substring \&quot;is\&quot; (indexOf):  &quot; + usingIndexOf(sentence, &quot;is&quot;));
+        System.out.println(&quot;Substring \&quot;ana\&quot; in banana: &quot; + usingIndexOf(&quot;banana&quot;, &quot;ana&quot;));
+    }
+}</code></pre></details><details id="duplicatecharacters" class="prog"><summary><b>Duplicate characters</b><span>Find the characters that appear MORE THAN ONCE in a string, and show how many times each appears.</span></summary><p class="filename">DuplicateCharacters.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Problem: Find the characters that appear MORE THAN ONCE in a string,
+ * and show how many times each appears.
+ *
+ * Example:
+ *   Input:  &quot;programming&quot;
+ *   Output: r=2, g=2, m=2
+ *
+ * This is the single-string cousin of
+ * easyarrays.FindDuplicateStrings, which finds repeated VALUES inside a
+ * String ARRAY — same ideas, different input shape.
+ */
+public class DuplicateCharacters {
+
+    /**
+     * Approach 1: Frequency map, then keep only counts above 1.
+     *
+     * Idea: count every character with the usual frequency map, then
+     * walk the entries and print just the ones whose count is 2 or
+     * more. Simple because the map already did the grouping work.
+     */
+    public static void usingFrequencyMap(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+        for (char ch : text.toCharArray()) {
+            frequency.merge(ch, 1, Integer::sum);
+        }
+
+        for (Map.Entry&lt;Character, Integer&gt; entry : frequency.entrySet()) {
+            if (entry.getValue() &gt; 1) {
+                System.out.println(entry.getKey() + &quot;=&quot; + entry.getValue());
+            }
+        }
+    }
+
+    /**
+     * Approach 2: The Set &quot;add returns false&quot; trick.
+     *
+     * Idea: lighter-weight when you only need WHICH characters repeat,
+     * not their counts. Set.add() returns false when the value was
+     * already there — that false means &quot;this character is a duplicate&quot;.
+     */
+    public static void usingTwoSets(String text) {
+        Set&lt;Character&gt; seen = new LinkedHashSet&lt;&gt;();
+        Set&lt;Character&gt; duplicates = new LinkedHashSet&lt;&gt;();
+
+        for (char ch : text.toCharArray()) {
+            if (!seen.add(ch)) {
+                duplicates.add(ch); // add() said &quot;already present&quot; -&gt; a repeat
+            }
+        }
+
+        for (char ch : duplicates) {
+            System.out.println(ch);
+        }
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;programming&quot;;
+
+        System.out.println(&quot;Frequency map (with counts):&quot;);
+        usingFrequencyMap(input);
+
+        System.out.println(&quot;Two sets (which chars repeat):&quot;);
+        usingTwoSets(input);
+    }
+}</code></pre></details><details id="factorial" class="prog"><summary><b>Factorial</b><span>Compute n! (n FACTORIAL) — the product of all numbers from 1 to n.</span></summary><p class="filename">Factorial.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Compute n! (n FACTORIAL) — the product of all numbers from
+ * 1 to n.
+ *
+ * Example:
+ *   Input:  5
+ *   Output: 120   (5 x 4 x 3 x 2 x 1)
+ *
+ * Note: factorials grow insanely fast. int overflows at 13!, and even
+ * long overflows at 21! — that is why these methods return long, and
+ * why anything bigger needs java.math.BigInteger.
+ */
+public class Factorial {
+
+    /**
+     * Approach 1: Loop and multiply.
+     *
+     * Idea: start the result at 1 (not 0 — multiplying by 0 would wipe
+     * everything out) and multiply by each number from 2 up to n.
+     */
+    public static long usingLoop(int n) {
+        long result = 1;
+
+        for (int i = 2; i &lt;= n; i++) {
+            result = result * i;
+        }
+
+        return result;
+    }
+
+    /**
+     * Approach 2: Recursion (a method that calls itself).
+     *
+     * Idea: n! IS n x (n-1)! by definition, so the method restates the
+     * definition. &quot;n &lt;= 1&quot; is the BASE CASE that stops the chain —
+     * without it the method would call itself forever.
+     */
+    public static long usingRecursion(int n) {
+        if (n &lt;= 1) {
+            return 1; // base case: 0! = 1 and 1! = 1
+        }
+        return n * usingRecursion(n - 1); // recursive case
+    }
+
+    public static void main(String[] args) {
+        System.out.println(&quot;5!  loop=&quot; + usingLoop(5) + &quot;, recursion=&quot; + usingRecursion(5));
+        System.out.println(&quot;20! loop=&quot; + usingLoop(20) + &quot;, recursion=&quot; + usingRecursion(20));
+    }
+}</code></pre></details><details id="fibonacciseries" class="prog"><summary><b>Fibonacci series</b><span>Print the Fibonacci series — the sequence where every number is the sum of the two before it: 0, 1, 1, 2, 3, 5, 8, 13, ...</span></summary><p class="filename">FibonacciSeries.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Print the Fibonacci series — the sequence where every number
+ * is the sum of the two before it: 0, 1, 1, 2, 3, 5, 8, 13, ...
+ *
+ * Example:
+ *   Input:  7 (how many numbers to print)
+ *   Output: 0 1 1 2 3 5 8
+ */
+public class FibonacciSeries {
+
+    /**
+     * Approach 1: Iterate, carrying the last two numbers.
+     *
+     * Idea: you only ever need the previous TWO numbers to compute the
+     * next one, so carry them in two variables (a and b) and slide them
+     * forward each step: the new &quot;a&quot; is the old &quot;b&quot;, the new &quot;b&quot; is their
+     * sum. Think of it as a two-window frame sliding along the series.
+     */
+    public static void printIterative(int howMany) {
+        int a = 0; // first number of the series
+        int b = 1; // second number of the series
+
+        for (int i = 0; i &lt; howMany; i++) {
+            System.out.print(a + &quot; &quot;);
+
+            int next = a + b; // the next Fibonacci number
+            a = b;            // slide the window one step forward
+            b = next;
+        }
+        System.out.println();
+    }
+
+    /**
+     * Approach 2: Recursion (a method that calls itself).
+     *
+     * Idea: fib(n) IS fib(n-1) + fib(n-2) by definition, so the method
+     * literally restates the definition. The if for n &lt;= 1 is the BASE
+     * CASE — the condition that stops the method from calling itself
+     * forever.
+     *
+     * Beautiful, but wasteful: fib(10) recomputes fib(8), which
+     * recomputes fib(7)... the same values are calculated over and over.
+     * Fine for small n; Approach 1 is what you would actually use.
+     */
+    public static int fib(int n) {
+        if (n &lt;= 1) {
+            return n; // base case: fib(0) = 0, fib(1) = 1
+        }
+        return fib(n - 1) + fib(n - 2); // recursive case: restate the definition
+    }
+
+    public static void main(String[] args) {
+        int howMany = 7;
+
+        System.out.println(&quot;Iterative:&quot;);
+        printIterative(howMany);
+
+        System.out.println(&quot;Recursive:&quot;);
+        for (int i = 0; i &lt; howMany; i++) {
+            System.out.print(fib(i) + &quot; &quot;);
+        }
+        System.out.println();
+    }
+}</code></pre></details><details id="firstandlastnonrepeatedchar" class="prog"><summary><b>First and last non repeated char</b><span>Find the FIRST and the LAST character in a string that appear exactly once (non-repeated characters).</span></summary><p class="filename">FirstAndLastNonRepeatedChar.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Problem: Find the FIRST and the LAST character in a string that appear
+ * exactly once (non-repeated characters).
+ *
+ * Example for &quot;programming&quot;:
+ *   Frequencies: p=1, r=2, o=1, g=2, a=1, m=2, i=1, n=1
+ *   Non-repeated characters in order: p, o, a, i, n
+ *   Output: first = p, last = n
+ */
+public class FirstAndLastNonRepeatedChar {
+
+    /**
+     * Approach 1: Nested loops with a visited array.
+     *
+     * Idea: for each character, scan the rest of the string counting its
+     * duplicates and marking those positions &quot;visited&quot; so they are not
+     * recounted. A character whose final count is 1 is non-repeated: the
+     * FIRST one we meet is the answer for &quot;first&quot;, and every later one
+     * keeps overwriting &quot;last&quot;.
+     */
+    public static void usingNestedLoops(String text) {
+        char[] chars = text.toCharArray();
+        boolean[] visited = new boolean[chars.length];
+
+        Character firstNonRepeated = null; // Character (object) so it can hold null = &quot;not found yet&quot;
+        Character lastNonRepeated = null;
+
+        for (int i = 0; i &lt; chars.length; i++) {
+            if (visited[i]) {
+                continue; // already counted inside an earlier group
+            }
+
+            int count = 1;
+            for (int j = i + 1; j &lt; chars.length; j++) {
+                if (chars[i] == chars[j]) {
+                    count++;
+                    visited[j] = true;
+                }
+            }
+
+            if (count == 1) {
+                if (firstNonRepeated == null) {
+                    firstNonRepeated = chars[i]; // only the very first one lands here
+                }
+                lastNonRepeated = chars[i]; // every non-repeated char updates this
+            }
+        }
+
+        System.out.println(&quot;First non-repeated: &quot; + firstNonRepeated);
+        System.out.println(&quot;Last non-repeated:  &quot; + lastNonRepeated);
+    }
+
+    /**
+     * Approach 2: Count everything first, then read the counts in order.
+     *
+     * Idea: split the job into two simple passes. Pass 1 builds the full
+     * frequency map with a LinkedHashMap — insertion order matters because
+     * it lets us find the FIRST non-repeated character just by reading the
+     * map in order. Pass 2 walks the map: the first entry with count 1 is
+     * &quot;first&quot;, and we keep updating &quot;last&quot; with every count-1 entry.
+     */
+    public static void usingFrequencyMap(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+        for (char ch : text.toCharArray()) {
+            frequency.merge(ch, 1, Integer::sum);
+        }
+
+        Character firstNonRepeated = null;
+        Character lastNonRepeated = null;
+
+        for (Map.Entry&lt;Character, Integer&gt; entry : frequency.entrySet()) {
+            if (entry.getValue() == 1) {
+                if (firstNonRepeated == null) {
+                    firstNonRepeated = entry.getKey();
+                }
+                lastNonRepeated = entry.getKey();
+            }
+        }
+
+        System.out.println(&quot;First non-repeated: &quot; + firstNonRepeated);
+        System.out.println(&quot;Last non-repeated:  &quot; + lastNonRepeated);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;programming&quot;;
+
+        System.out.println(&quot;Nested loops:&quot;);
+        usingNestedLoops(input);
+
+        System.out.println(&quot;Frequency map:&quot;);
+        usingFrequencyMap(input);
+    }
+}</code></pre></details><details id="longestandshortestword" class="prog"><summary><b>Longest and shortest word</b><span>Find the longest AND the shortest word in a sentence.</span></summary><p class="filename">LongestAndShortestWord.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.Arrays;
+import java.util.Comparator;
+
+/**
+ * Problem: Find the longest AND the shortest word in a sentence.
+ *
+ * Example:
+ *   Input:  &quot;I am the tribal chief&quot;
+ *   Output: longest = &quot;tribal&quot;, shortest = &quot;I&quot;
+ *
+ * Note: on ties these approaches return the FIRST word with that length.
+ */
+public class LongestAndShortestWord {
+
+    /**
+     * Approach 1: Split and track both champions in one pass.
+     *
+     * Idea: carry two champions through the word list — the longest and
+     * the shortest seen so far. Both start as the FIRST word (starting
+     * shortest at &quot;&quot; would never lose, since no word is shorter than
+     * empty). Strict &quot;&gt;&quot; / &quot;&lt;&quot; comparisons mean ties keep the earlier
+     * word.
+     */
+    public static void usingLoop(String sentence) {
+        String[] words = sentence.split(&quot; &quot;);
+
+        String longest = words[0];
+        String shortest = words[0];
+
+        for (String word : words) {
+            if (word.length() &gt; longest.length()) {
+                longest = word;
+            }
+            if (word.length() &lt; shortest.length()) {
+                shortest = word;
+            }
+        }
+
+        System.out.println(&quot;longest=&quot; + longest + &quot;, shortest=&quot; + shortest);
+    }
+
+    /**
+     * Approach 2: Java 8 Streams.
+     *
+     * Idea: stream the words twice — once asking for the max() by
+     * length, once for the min(). Comparator.comparingInt(String::length)
+     * means &quot;compare words by their length&quot;, and the Optional results
+     * are unwrapped with orElse(&quot;&quot;) for empty input.
+     */
+    public static void usingStreams(String sentence) {
+        String[] words = sentence.split(&quot; &quot;);
+
+        String longest = Arrays.stream(words)
+                .max(Comparator.comparingInt(String::length))
+                .orElse(&quot;&quot;);
+
+        String shortest = Arrays.stream(words)
+                .min(Comparator.comparingInt(String::length))
+                .orElse(&quot;&quot;);
+
+        System.out.println(&quot;longest=&quot; + longest + &quot;, shortest=&quot; + shortest);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;I am the tribal chief&quot;;
+
+        System.out.println(&quot;Loop:    &quot;);
+        usingLoop(input);
+
+        System.out.println(&quot;Streams: &quot;);
+        usingStreams(input);
+    }
+}</code></pre></details><details id="mostfrequentcharacter" class="prog"><summary><b>Most frequent character</b><span>Find the character that appears MOST OFTEN in a string.</span></summary><p class="filename">MostFrequentCharacter.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Problem: Find the character that appears MOST OFTEN in a string.
+ *
+ * Example:
+ *   Input:  &quot;banana&quot;
+ *   Output: &#x27;a&#x27; (appears 3 times)
+ *
+ * Note: on a tie this returns the character that reached the top count
+ * first in reading order (&quot;success&quot; -&gt; &#x27;s&#x27;, even though &#x27;c&#x27; also
+ * appears twice).
+ */
+public class MostFrequentCharacter {
+
+    /**
+     * Approach 1: Frequency map, then scan for the champion.
+     *
+     * Idea: this problem is two smaller problems chained. Step 1 is the
+     * familiar character frequency count (see CountCharacterFrequency).
+     * Step 2 walks the map keeping track of the entry with the highest
+     * count — &quot;&gt;&quot; means the FIRST character to reach the top count wins
+     * ties.
+     */
+    public static char usingFrequencyMap(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+        for (char ch : text.toCharArray()) {
+            frequency.merge(ch, 1, Integer::sum);
+        }
+
+        char mostFrequent = &#x27; &#x27;;
+        int highestCount = 0;
+
+        for (Map.Entry&lt;Character, Integer&gt; entry : frequency.entrySet()) {
+            if (entry.getValue() &gt; highestCount) {
+                highestCount = entry.getValue();
+                mostFrequent = entry.getKey();
+            }
+        }
+
+        return mostFrequent;
+    }
+
+    /**
+     * Approach 2: Let the stream pick the max entry.
+     *
+     * Idea: same frequency map, but the champion scan is expressed as
+     * max() over the entry set. Map.Entry.comparingByValue() tells the
+     * stream to compare entries by their counts. max() returns an
+     * Optional, which we unwrap with orElseThrow().
+     */
+    public static char usingStreams(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+        for (char ch : text.toCharArray()) {
+            frequency.merge(ch, 1, Integer::sum);
+        }
+
+        return frequency.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElseThrow()
+                .getKey();
+    }
+
+    public static void main(String[] args) {
+        String[] samples = { &quot;banana&quot;, &quot;success&quot; };
+
+        for (String sample : samples) {
+            System.out.println(sample + &quot;: map -&gt; &quot; + usingFrequencyMap(sample)
+                    + &quot;, streams -&gt; &quot; + usingStreams(sample));
+        }
+    }
+}</code></pre></details><details id="primenumber" class="prog"><summary><b>Prime number</b><span>Check whether a number is PRIME — a number greater than 1 that is divisible only by 1 and itself.</span></summary><p class="filename">PrimeNumber.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Check whether a number is PRIME — a number greater than 1 that
+ * is divisible only by 1 and itself.
+ *
+ * Examples: 7 -&gt; prime, 12 -&gt; not prime (12 = 3 x 4), 2 -&gt; prime
+ *
+ * Edge cases to remember: 0 and 1 are NOT prime by definition, and 2 IS
+ * prime (the only even one).
+ */
+public class PrimeNumber {
+
+    /**
+     * Approach 1: Try every divisor up to n / 2.
+     *
+     * Idea: a divisor of n can never be bigger than n / 2 (the smallest
+     * possible partner is 2, and n / 2 x 2 = n already). So testing
+     * divisors 2 up to n/2 is enough. n % i == 0 means &quot;i divides n
+     * exactly&quot; -&gt; not prime.
+     */
+    public static boolean isPrimeUpToHalf(int n) {
+        if (n &lt; 2) {
+            return false; // 0 and 1 are not prime
+        }
+
+        for (int i = 2; i &lt;= n / 2; i++) {
+            if (n % i == 0) {
+                return false; // found an exact divisor -&gt; not prime
+            }
+        }
+        return true; // nothing divided n -&gt; prime
+    }
+
+    /**
+     * Approach 2: Try divisors only up to the square root of n.
+     *
+     * Idea: divisors come in PAIRS. If n = a x b and a is bigger than
+     * sqrt(n), then b must be smaller than sqrt(n) — so any pair would
+     * already have been found by its smaller member. That is why checking
+     * up to i * i &lt;= n is enough; we write &quot;i * i &lt;= n&quot; instead of
+     * &quot;i &lt;= sqrt(n)&quot; to stay with integers and avoid floating point.
+     */
+    public static boolean isPrimeUpToSquareRoot(int n) {
+        if (n &lt; 2) {
+            return false;
+        }
+
+        for (int i = 2; i * i &lt;= n; i++) {
+            if (n % i == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        int[] candidates = { 1, 2, 7, 12, 29 };
+
+        for (int n : candidates) {
+            System.out.println(n + &quot;: up to n/2 -&gt; &quot; + isPrimeUpToHalf(n)
+                    + &quot;, up to sqrt -&gt; &quot; + isPrimeUpToSquareRoot(n));
+        }
+    }
+}</code></pre></details><details id="removeduplicatesfromstring" class="prog"><summary><b>Remove duplicates from string</b><span>Remove duplicate characters from a string, keeping the first occurrence of each character in its original position.</span></summary><p class="filename">RemoveDuplicatesFromString.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/**
+ * Problem: Remove duplicate characters from a string, keeping the first
+ * occurrence of each character in its original position.
+ *
+ * Example:
+ *   Input:  &quot;programming&quot;
+ *   Output: &quot;progamin&quot;
+ *
+ * Java terms worth learning here:
+ * - LinkedHashSet is a Set (so it silently refuses duplicates) that ALSO
+ *   remembers insertion order. Plain HashSet would dedupe too, but the
+ *   characters could come out in any order.
+ * - String.toCharArray() converts a string into a char[] so you can loop
+ *   over it with a for-each loop.
+ */
+public class RemoveDuplicatesFromString {
+
+    /**
+     * Approach 1: Feed every character through a LinkedHashSet.
+     *
+     * Idea: add each character to the set — duplicates are ignored
+     * automatically — then read the set back into a string. The set does
+     * all the dedupe work for us.
+     */
+    public static String usingLinkedHashSet(String text) {
+        Set&lt;Character&gt; unique = new LinkedHashSet&lt;&gt;();
+
+        for (char ch : text.toCharArray()) {
+            unique.add(ch); // already present? add() just does nothing
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (char ch : unique) {
+            result.append(ch);
+        }
+        return result.toString();
+    }
+
+    /**
+     * Approach 2: Build the answer, skipping characters already in it.
+     *
+     * Idea: grow the result one character at a time; before appending,
+     * check whether the result already contains that character
+     * (StringBuilder.indexOf returns -1 when NOT found). No extra
+     * collection needed — but the repeated indexOf scan is exactly the
+     * work the Set was doing for us in Approach 1.
+     */
+    public static String usingIndexOf(String text) {
+        StringBuilder result = new StringBuilder();
+
+        for (char ch : text.toCharArray()) {
+            if (result.indexOf(String.valueOf(ch)) == -1) { // -1 = not seen yet
+                result.append(ch);
+            }
+        }
+        return result.toString();
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;programming&quot;;
+
+        System.out.println(&quot;LinkedHashSet: &quot; + usingLinkedHashSet(input));
+        System.out.println(&quot;indexOf check: &quot; + usingIndexOf(input));
+    }
+}</code></pre></details><details id="reversethenumber" class="prog"><summary><b>Reverse the number</b><span>Reverse the digits of a number.</span></summary><p class="filename">ReverseTheNumber.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Reverse the digits of a number.
+ *
+ * Example:
+ *   Input:  1234
+ *   Output: 4321
+ *
+ * Java terms worth learning here:
+ * - num % 10 gives the LAST digit of a number (remainder after dividing
+ *   by 10). Example: 1234 % 10 = 4.
+ * - num / 10 DROPS the last digit (integer division throws away the
+ *   fraction). Example: 1234 / 10 = 123.
+ * Together they let you peel a number apart digit by digit.
+ */
+public class ReverseTheNumber {
+
+    /**
+     * Approach 1: Peel digits with math (the classic answer).
+     *
+     * Idea: repeatedly take the last digit (num % 10) and append it to the
+     * result by shifting the result one decimal place left (rev * 10) and
+     * adding the digit. Then chop the used digit off num (num / 10).
+     *
+     * Walkthrough for 1234:
+     *   digit 4 -&gt; rev = 0*10 + 4 = 4
+     *   digit 3 -&gt; rev = 4*10 + 3 = 43
+     *   digit 2 -&gt; rev = 43*10 + 2 = 432
+     *   digit 1 -&gt; rev = 432*10 + 1 = 4321
+     */
+    public static int usingMath(int num) {
+        int reversed = 0;
+
+        while (num != 0) {
+            int lastDigit = num % 10;          // peel off the last digit
+            reversed = reversed * 10 + lastDigit; // append it to the result
+            num = num / 10;                    // drop the used digit
+        }
+
+        return reversed;
+    }
+
+    /**
+     * Approach 2: Turn it into a string and reverse that.
+     *
+     * Idea: reversing text is a solved problem (StringBuilder.reverse()),
+     * so convert the number to a string, reverse, convert back. Fewer
+     * moving parts, at the cost of a type conversion round-trip.
+     */
+    public static int usingString(int num) {
+        String reversedText = new StringBuilder(String.valueOf(num)).reverse().toString();
+        return Integer.parseInt(reversedText); // parse the text back into an int
+    }
+
+    public static void main(String[] args) {
+        int input = 1234;
+
+        System.out.println(&quot;Math:   &quot; + usingMath(input));
+        System.out.println(&quot;String: &quot; + usingString(input));
+    }
+}</code></pre></details><details id="reversethesentence" class="prog"><summary><b>Reverse the sentence</b><span>Reverse the order of WORDS in a sentence (the words themselves stay intact).</span></summary><p class="filename">ReverseTheSentence.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Problem: Reverse the order of WORDS in a sentence (the words themselves
+ * stay intact).
+ *
+ * Example:
+ *   Input:  &quot;I am the tribal chief&quot;
+ *   Output: &quot;chief tribal the am I&quot;
+ *
+ * Java terms worth learning here:
+ * - String.split(&quot; &quot;) breaks a string into a String[] around each space.
+ * - String.join(&quot; &quot;, pieces) glues parts together WITH the separator
+ *   between them — no trailing space to clean up afterwards.
+ */
+public class ReverseTheSentence {
+
+    /**
+     * Approach 1: Split, then collect words backwards.
+     *
+     * Idea: split the sentence into words, walk the array from the last
+     * word to the first, and append each with a space. We add the space
+     * BEFORE every word except the first one, so there is no stray space
+     * at the end.
+     */
+    public static String usingLoop(String sentence) {
+        String[] words = sentence.split(&quot; &quot;);
+
+        StringBuilder reversed = new StringBuilder();
+        for (int i = words.length - 1; i &gt;= 0; i--) {
+            if (reversed.length() &gt; 0) {
+                reversed.append(&quot; &quot;); // separator goes between words, not after
+            }
+            reversed.append(words[i]);
+        }
+
+        return reversed.toString();
+    }
+
+    /**
+     * Approach 2: Split, reverse the list, join (the everyday answer).
+     *
+     * Idea: turn the array into a List so we can use Collections.reverse()
+     * on it, then glue everything back with String.join(). Same result,
+     * almost no manual index work.
+     */
+    public static String usingCollections(String sentence) {
+        List&lt;String&gt; words = Arrays.asList(sentence.split(&quot; &quot;));
+
+        Collections.reverse(words); // reverses the list in place
+
+        return String.join(&quot; &quot;, words);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;I am the tribal chief&quot;;
+
+        System.out.println(&quot;Loop:        &quot; + usingLoop(input));
+        System.out.println(&quot;Collections: &quot; + usingCollections(input));
+    }
+}</code></pre></details><details id="reversethestring" class="prog"><summary><b>Reverse the string</b><span>Reverse a string.</span></summary><p class="filename">ReverseTheString.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Reverse a string.
+ *
+ * Example:
+ *   Input:  &quot;madan&quot;
+ *   Output: &quot;nadam&quot;
+ *
+ * Java terms worth learning here:
+ * - String is IMMUTABLE: once created, a String object can never change.
+ *   That is why &quot;rev = rev + ch&quot; inside a loop silently creates a brand
+ *   new String object on every iteration — wasteful.
+ * - StringBuilder is the MUTABLE companion of String, designed exactly
+ *   for building text piece by piece. Prefer it inside loops.
+ */
+public class ReverseTheString {
+
+    /**
+     * Approach 1: Walk backwards with a StringBuilder.
+     *
+     * Idea: read the characters from the last index down to the first and
+     * append each one. Appending to a StringBuilder just grows the same
+     * object, so no throwaway Strings are created.
+     */
+    public static String usingLoop(String text) {
+        StringBuilder reversed = new StringBuilder();
+
+        for (int i = text.length() - 1; i &gt;= 0; i--) {
+            reversed.append(text.charAt(i)); // charAt(i) = the character at index i
+        }
+
+        return reversed.toString(); // convert back to a regular String
+    }
+
+    /**
+     * Approach 2: Let StringBuilder do it (the everyday answer).
+     *
+     * Idea: StringBuilder already ships with a reverse() method. Knowing
+     * your standard library is a skill in itself — in real test automation
+     * code you would write this one-liner, not a loop.
+     */
+    public static String usingStringBuilderReverse(String text) {
+        return new StringBuilder(text).reverse().toString();
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;madan&quot;;
+
+        System.out.println(&quot;Loop:              &quot; + usingLoop(input));
+        System.out.println(&quot;StringBuilder:     &quot; + usingStringBuilderReverse(input));
+    }
+}</code></pre></details><details id="separatecharactertypes" class="prog"><summary><b>Separate character types</b><span>Separate a mixed string into three groups — letters, digits, and special characters — keeping each group&#x27;s original order.</span></summary><p class="filename">SeparateCharacterTypes.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Separate a mixed string into three groups — letters, digits,
+ * and special characters — keeping each group&#x27;s original order.
+ *
+ * Example:
+ *   Input:  &quot;abcd1234!#$&quot;
+ *   Output: Alphabets: abcd | Numbers: 1234 | Specials: !#$
+ */
+public class SeparateCharacterTypes {
+
+    /**
+     * Approach 1: Sort each character with the Character class.
+     *
+     * Idea: walk the string once; Character.isLetter() and
+     * Character.isDigit() route each character into one of three
+     * StringBuilders. Anything that is neither letter nor digit lands in
+     * &quot;specials&quot; by elimination.
+     */
+    public static void usingCharacterClass(String text) {
+        StringBuilder alphabets = new StringBuilder();
+        StringBuilder numbers = new StringBuilder();
+        StringBuilder specials = new StringBuilder();
+
+        for (char ch : text.toCharArray()) {
+            if (Character.isLetter(ch)) {
+                alphabets.append(ch);
+            } else if (Character.isDigit(ch)) {
+                numbers.append(ch);
+            } else {
+                specials.append(ch); // neither letter nor digit -&gt; special
+            }
+        }
+
+        System.out.println(&quot;Alphabets: &quot; + alphabets);
+        System.out.println(&quot;Numbers:   &quot; + numbers);
+        System.out.println(&quot;Specials:  &quot; + specials);
+    }
+
+    /**
+     * Approach 2: Regex subtraction with replaceAll.
+     *
+     * Idea: build each group by DELETING everything that does not belong
+     * to it. &quot;[^a-zA-Z]&quot; is a regex NEGATED CHARACTER CLASS — it matches
+     * any single character that is NOT a letter — so replacing it with &quot;&quot;
+     * leaves only letters behind. Same trick with 0-9 for digits, and
+     * the inverse class for specials.
+     */
+    public static void usingRegex(String text) {
+        String alphabets = text.replaceAll(&quot;[^a-zA-Z]&quot;, &quot;&quot;);
+        String numbers = text.replaceAll(&quot;[^0-9]&quot;, &quot;&quot;);
+        String specials = text.replaceAll(&quot;[a-zA-Z0-9]&quot;, &quot;&quot;); // delete letters AND digits
+
+        System.out.println(&quot;Alphabets: &quot; + alphabets);
+        System.out.println(&quot;Numbers:   &quot; + numbers);
+        System.out.println(&quot;Specials:  &quot; + specials);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;abcd1234!#$&quot;;
+
+        System.out.println(&quot;Character class:&quot;);
+        usingCharacterClass(input);
+
+        System.out.println(&quot;Regex:&quot;);
+        usingRegex(input);
+    }
+}</code></pre></details><details id="sumofdigits" class="prog"><summary><b>Sum of digits</b><span>Add up the digits of a number.</span></summary><p class="filename">SumOfDigits.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Add up the digits of a number.
+ *
+ * Example:
+ *   Input:  1234
+ *   Output: 10   (1 + 2 + 3 + 4)
+ */
+public class SumOfDigits {
+
+    /**
+     * Approach 1: Peel digits with math.
+     *
+     * Idea: the same % 10 and / 10 pair used in ReverseTheNumber —
+     * % 10 hands you the last digit, / 10 removes it. Add each peeled
+     * digit to a running total.
+     */
+    public static int usingMath(int num) {
+        int sum = 0;
+
+        while (num != 0) {
+            sum = sum + (num % 10); // add the last digit
+            num = num / 10;         // then drop it
+        }
+
+        return sum;
+    }
+
+    /**
+     * Approach 2: Walk the digits as characters.
+     *
+     * Idea: turn the number into a string and add up each character.
+     * &quot;ch - &#x27;0&#x27;&quot; converts a digit character to its int value: characters
+     * &#x27;0&#x27;..&#x27;9&#x27; sit next to each other in the character table, so
+     * &#x27;7&#x27; - &#x27;0&#x27; is simply 7. (Character.getNumericValue(ch) does the
+     * same job with a longer name.)
+     */
+    public static int usingString(int num) {
+        int sum = 0;
+
+        for (char ch : String.valueOf(num).toCharArray()) {
+            sum = sum + (ch - &#x27;0&#x27;);
+        }
+
+        return sum;
+    }
+
+    public static void main(String[] args) {
+        int input = 1234;
+
+        System.out.println(&quot;Math:   &quot; + usingMath(input));
+        System.out.println(&quot;String: &quot; + usingString(input));
+    }
+}</code></pre></details><details id="swapcharactercase" class="prog"><summary><b>Swap character case</b><span>Swap the case of every letter in a string — uppercase becomes lowercase and lowercase becomes uppercase. Non-letters stay as they are.</span></summary><p class="filename">SwapCharacterCase.java</p><pre><code class="java">package com.sdet.studyplan.easystrings;
+
+/**
+ * Problem: Swap the case of every letter in a string — uppercase becomes
+ * lowercase and lowercase becomes uppercase. Non-letters stay as they are.
+ *
+ * Example:
+ *   Input:  &quot;HexaWare123&quot;
+ *   Output: &quot;hEXAwARE123&quot;
+ *
+ * Java terms worth learning here:
+ * - The Character class is the WRAPPER CLASS for the primitive char.
+ *   It carries helpful static methods like isUpperCase(), isLowerCase(),
+ *   toUpperCase() and toLowerCase(), so you rarely manipulate raw
+ *   character codes yourself.
+ */
+public class SwapCharacterCase {
+
+    /**
+     * Approach 1: Check each character with the Character class.
+     *
+     * Idea: walk through the string one char at a time. If it is an
+     * uppercase letter, append its lowercase form; if lowercase, append
+     * its uppercase form; otherwise (digits, spaces, punctuation) append
+     * it unchanged. That final &quot;otherwise&quot; branch is easy to forget —
+     * without it, digits would silently disappear from the output.
+     */
+    public static String usingCharacterClass(String text) {
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+
+            if (Character.isUpperCase(ch)) {
+                result.append(Character.toLowerCase(ch));
+            } else if (Character.isLowerCase(ch)) {
+                result.append(Character.toUpperCase(ch));
+            } else {
+                result.append(ch); // not a letter -&gt; keep it as it is
+            }
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * Approach 2: Same logic, ternary operator style.
+     *
+     * Idea: identical checks, but each character is converted in a single
+     * expression using the TERNARY OPERATOR (condition ? valueIfTrue :
+     * valueIfFalse). Handy when each branch is one short expression.
+     */
+    public static String usingTernary(String text) {
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+
+            char swapped = Character.isUpperCase(ch)
+                    ? Character.toLowerCase(ch)
+                    : Character.toUpperCase(ch);
+
+            // Note: toUpperCase/toLowerCase return the char unchanged when
+            // it is not a letter, so no extra else-branch is needed here.
+            result.append(swapped);
+        }
+
+        return result.toString();
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;HexaWare123&quot;;
+
+        System.out.println(&quot;Character class: &quot; + usingCharacterClass(input));
+        System.out.println(&quot;Ternary:         &quot; + usingTernary(input));
+    }
+}</code></pre></details>
+<p class="sitenav"><a href="../../index.html#java">All lessons</a><a href="easyarrays.html">Arrays &rarr;</a></p>
+</main>
+<script>
+document.getElementById('openall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = true; });
+});
+document.getElementById('shutall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = false; });
+});
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('.chips a');
+  if (!a) return;
+  var d = document.querySelector(a.getAttribute('href'));
+  if (d) d.open = true;
+});
+</script>
+</body>
+</html>

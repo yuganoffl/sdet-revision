@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · WebDriver setup and teardown</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="../lessons/0009-rapid-fire-answers.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><span class="tb-x"></span></div>
+<main class="sheet">
+
+<p class="eyebrow">Reference &middot; Selenium</p>
+<h1>Driver setup and teardown</h1>
+<p class="standfirst">Everything that happens before and after a test touches the page.
+Checked against the Selenium documentation, verified on Chrome 151 / Selenium 4.21 / JDK 21.</p>
+
+<h2>The skeleton</h2>
+
+<pre><code><span class="k">public abstract class</span> BaseTest {
+    <span class="k">protected</span> WebDriver driver;
+
+    <span class="k">@BeforeMethod</span>(alwaysRun = <span class="k">true</span>)
+    <span class="k">public void</span> startBrowser() {
+        ChromeOptions options = <span class="k">new</span> ChromeOptions();
+        options.addArguments(<span class="s">"--headless=new"</span>, <span class="s">"--window-size=1450,900"</span>);
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+        driver = <span class="k">new</span> ChromeDriver(options);
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(<span class="s">60</span>));
+    }
+
+    <span class="k">@AfterMethod</span>(alwaysRun = <span class="k">true</span>)
+    <span class="k">public void</span> stopBrowser() {
+        <span class="k">if</span> (driver != <span class="k">null</span>) driver.quit();
+    }
+}</code></pre>
+
+<h2>Driver binaries</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>How the chromedriver binary gets there</caption>
+  <tr><th>Era</th><th>What you wrote</th><th>Status</th></tr>
+  <tr><td>Selenium 3</td><td><code>System.setProperty("webdriver.chrome.driver", path)</code></td><td>obsolete</td></tr>
+  <tr><td>Selenium 4.0&ndash;4.5</td><td><code>WebDriverManager.chromedriver().setup()</code>, a third-party library</td><td>no longer needed</td></tr>
+  <tr><td>Selenium 4.6+</td><td>nothing</td><td>current</td></tr>
+</table>
+</div>
+
+<p><a href="https://www.selenium.dev/documentation/selenium_manager/">Selenium Manager</a> is
+a Rust binary shipped inside every Selenium release since <strong>4.6</strong>. It discovers,
+downloads and caches the driver. Since <strong>4.11</strong> it downloads the
+<em>browser</em> too, when one is not installed. Cache lives in
+<code>~/.cache/selenium</code>.</p>
+
+<h2>Scope: where setup goes</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>Choose one, and be able to defend it</caption>
+  <tr><th>Annotation</th><th>Browsers per class of 10 tests</th><th>Use when</th></tr>
+  <tr><td><code>@BeforeMethod</code></td><td>10</td><td>default; tests cannot leak state into each other</td></tr>
+  <tr><td><code>@BeforeClass</code></td><td>1</td><td>the suite is slow and the tests genuinely do not share state</td></tr>
+  <tr><td><code>@BeforeSuite</code></td><td>1 for everything</td><td>almost never; one failure can strand the whole run</td></tr>
+</table>
+</div>
+
+<p><code>alwaysRun = true</code> matters here. Without it, a group-filtered run
+(<code>-Dgroups=smoke</code>) can skip your setup method and every test then fails on a null
+driver.</p>
+
+<h2>close() vs quit()</h2>
+
+<div class="scroll-x">
+<table>
+  <tr><th></th><th><code>close()</code></th><th><code>quit()</code></th></tr>
+  <tr><td>Shuts</td><td>the focused window or tab</td><td>every window in the session</td></tr>
+  <tr><td>Browser process</td><td>survives if other tabs remain</td><td>ends</td></tr>
+  <tr><td>Driver process</td><td>keeps running</td><td>ends</td></tr>
+  <tr><td>Session</td><td>alive</td><td>over; the driver object is now dead</td></tr>
+  <tr><td>Use in</td><td>closing a child tab mid-test</td><td>teardown, always</td></tr>
+</table>
+</div>
+
+<p>After <code>close()</code> on the last window, or on a child tab, the driver still points
+at a window that is gone. Any command then throws <code>NoSuchWindowException</code> until
+you <code>switchTo().window(parentHandle)</code>.
+(<a href="https://www.selenium.dev/documentation/webdriver/interactions/windows/">docs</a>)</p>
+
+<h2>Page load strategy</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>What driver.get() waits for before returning</caption>
+  <tr><th>Strategy</th><th>Returns when</th><th>document.readyState</th></tr>
+  <tr><td><code>NORMAL</code> (default)</td><td>all resources are downloaded &mdash; images, CSS, fonts</td><td><code>complete</code></td></tr>
+  <tr><td><code>EAGER</code></td><td>the HTML is parsed; DOMContentLoaded has fired</td><td><code>interactive</code></td></tr>
+  <tr><td><code>NONE</code></td><td>the HTML has begun downloading</td><td><code>any</code></td></tr>
+</table>
+</div>
+
+<div class="note">
+  <span class="lbl">Practical note</span>
+  <p><code>EAGER</code> is the fix for <code>Timed out receiving message from renderer</code>
+  on a slow site. It is safe precisely because you are already using explicit waits for the
+  elements you assert on. <code>NONE</code> is for pages where you deliberately want control
+  before the DOM exists; it is rarely what you want.</p>
+</div>
+
+<h2>Useful ChromeOptions arguments</h2>
+
+<div class="scroll-x">
+<table>
+  <tr><th>Argument</th><th>Effect</th></tr>
+  <tr><td><code>--headless=new</code></td><td>no visible window; the modern headless mode, not the old cut-down one</td></tr>
+  <tr><td><code>--window-size=1450,900</code></td><td>fixes the viewport; headless defaults are small enough to hide elements</td></tr>
+  <tr><td><code>--start-maximized</code></td><td>headed runs only</td></tr>
+  <tr><td><code>--incognito</code></td><td>clean profile; mostly redundant when each test gets a new driver</td></tr>
+  <tr><td><code>--disable-notifications</code></td><td>kills the permission popup that steals clicks</td></tr>
+  <tr><td><code>--remote-allow-origins=*</code></td><td>a Selenium 4.8-era workaround; not needed now</td></tr>
+</table>
+</div>
+
+<h2>Timeouts</h2>
+
+<pre><code>driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(<span class="s">60</span>));  <span class="c">// get() gives up</span>
+driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(<span class="s">30</span>));    <span class="c">// async JS gives up</span>
+driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(<span class="s">10</span>));  <span class="c">// DO NOT — see lesson 2</span></code></pre>
+
+<h2>Noise you can ignore</h2>
+
+<div class="scroll-x">
+<table>
+  <tr><th>Message</th><th>What it means</th></tr>
+  <tr><td><code>Unable to find CDP implementation matching 151</code></td><td>Your Selenium client bundles DevTools bindings for older Chrome majors. Harmless unless you call the <code>devTools</code> API for network interception or console logs.</td></tr>
+  <tr><td><code>SLF4J: Failed to load class StaticLoggerBinder</code></td><td>No logging backend on the classpath. Selenium logs nothing; nothing breaks.</td></tr>
+  <tr><td>Start URL is <code>data:,</code></td><td>Correct. A new ChromeDriver session always begins there, not on <code>about:blank</code>.</td></tr>
+</table>
+</div>
+
+<div class="footer">
+  <h3>Sources</h3>
+  <p><a href="https://www.selenium.dev/documentation/webdriver/">WebDriver docs</a> &middot;
+  <a href="https://www.selenium.dev/documentation/selenium_manager/">Selenium Manager</a> &middot;
+  <a href="https://www.selenium.dev/documentation/webdriver/drivers/options/">Options</a> &middot;
+  <a href="https://www.selenium.dev/documentation/webdriver/interactions/windows/">Windows and tabs</a></p>
+  <p class="nav">
+    <a href="../lessons/0001-your-first-selenium-test.html">Lesson 1</a>
+    Mission
+  </p>
+</div>
+
+<p class="sitenav"><a href="../lessons/0009-rapid-fire-answers.html">&larr; Lesson 9</a><a href="../../index.html#selenium">All lessons</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5 · Exception handling</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0004-explaining-your-framework.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0006-locators.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 05 &middot; Selenium</p>
+<h1>Exception handling</h1>
+<p class="standfirst">Two halves. The Java rules, which they will ask you cold. Then the
+Selenium catalogue: what each one means, why it happened, and the fix. Every exception
+below is thrown for real by a test in this repo, and the class hierarchy was read out of
+the jar rather than remembered.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. Checked means the compiler forces you to deal with it. Unchecked means it does
+  not.<br>
+  2. <strong>Every Selenium exception is unchecked.</strong> That is deliberate, and it
+  is why tests let them fly.<br>
+  3. In a test, catching an exception usually turns a real failure into a false pass. Let
+  it propagate.<br>
+  4. The five you must know by sight: <code>NoSuchElement</code>,
+  <code>Timeout</code>, <code>StaleElementReference</code>,
+  <code>ElementNotInteractable</code>, <code>ElementClickIntercepted</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="java">Part one: the Java rules</h2>
+
+<h3>Checked versus unchecked</h3>
+
+<p>The whole distinction is one question: <em>does the compiler force you to handle
+it?</em></p>
+
+<pre><code>Throwable
+  ├── Error                  JVM-level. OutOfMemoryError. Do not catch these.
+  └── Exception
+        ├── RuntimeException     UNCHECKED. NullPointer, IllegalArgument, ...
+        │                        Compiler says nothing.
+        └── everything else      CHECKED. IOException, SQLException, ...
+                                 Compiler forces try/catch or throws.</code></pre>
+
+<p>The line to say: "Checked exceptions are conditions a caller could reasonably recover
+from, so the compiler makes them part of the signature. Unchecked ones are programming
+errors, and forcing everyone to catch them would just produce empty catch blocks."</p>
+
+<h3>try, catch, finally</h3>
+
+<pre><code>try {
+    // work that might fail
+} catch (IOException e) {
+    // handle it, or rethrow with context
+} finally {
+    // runs whether or not it threw. Cleanup goes here.
+}</code></pre>
+
+<p><code>finally</code> runs even when the <code>try</code> block returns. That is what
+makes it the place for cleanup. In a test framework, though, cleanup belongs in
+<code>@AfterMethod(alwaysRun = true)</code>, which is TestNG's version of the same
+idea.</p>
+
+<h3>throw versus throws</h3>
+
+<p><code>throw</code> is a statement. It throws one object, right now.
+<code>throws</code> is part of a method signature. It declares what might come out.
+Interviewers ask this to check you are not guessing.</p>
+
+<pre><code>public Row read(int i) throws IOException {      // declares
+    if (i &lt; 0) throw new IllegalArgumentException("row " + i);   // throws
+}</code></pre>
+
+<h3>Custom exceptions, and when they earn their place</h3>
+
+<pre><code>public class FrameworkException extends RuntimeException {
+    public FrameworkException(String message, Throwable cause) {
+        super(message, cause);        // keep the cause. Always.
+    }
+}</code></pre>
+
+<p>Worth it when you can add context the original could not carry. "Could not read row 7
+of palindrome-data.xlsx" beats a bare <code>IOException</code>. Extend
+<code>RuntimeException</code> so it does not pollute every signature above it, and always
+pass the cause through, or you throw away the stack trace that tells you what really
+happened.</p>
+
+<hr>
+
+<h2 id="testing">The part that matters for testing</h2>
+
+<div class="warn">
+  <span class="lbl">A catch block in a test is usually a bug</span>
+<pre><code>// Never do this.
+try {
+    driver.findElement(By.id("submit")).click();
+} catch (Exception e) {
+    System.out.println("could not click");
+}</code></pre>
+  <p>The button was missing. The application is broken. And your test just printed a line
+  nobody reads and <strong>passed green</strong>.</p>
+  <p>A test's job is to fail when the application is wrong. Swallowing the exception is
+  the one way to guarantee it cannot do its job.</p>
+</div>
+
+<p>So how do you assert that something <em>should</em> fail? Not with a catch block.
+Declare it:</p>
+
+<pre><code>@Test(expectedExceptions = NoSuchElementException.class)
+public void noSuchElement() {
+    driver.findElement(By.id("does-not-exist"));
+}</code></pre>
+
+<p>That test passes <em>because</em> the exception was thrown, and fails if it is not.
+The intent is in the signature where a reader sees it.</p>
+
+<p><strong>Where catching is legitimate,</strong> and be ready to name these, because
+"never catch anything" is not a real answer:</p>
+
+<ul>
+  <li><strong>In the framework, not the test.</strong> A <code>BasePage</code> helper that
+  retries a click once on <code>ElementClickInterceptedException</code>.</li>
+  <li><strong>To add context, then rethrow.</strong> Catch, wrap in your own exception
+  with the row number and the URL, throw that. Never swallow.</li>
+  <li><strong>In an <code>@AfterMethod</code>.</strong> Teardown that throws hides the
+  real failure with a second one.</li>
+  <li><strong>In a listener.</strong> A screenshot that fails must not take the report
+  down with it.</li>
+</ul>
+
+<hr>
+
+<h2 id="hierarchy">Part two: the Selenium catalogue</h2>
+
+<p>Read out of <code>selenium-api-4.21.0.jar</code> with <code>javap</code>, not from
+memory:</p>
+
+<pre><code>RuntimeException
+  └── WebDriverException              <- everything below is UNCHECKED
+        ├── NotFoundException
+        │     ├── NoSuchElementException
+        │     ├── NoAlertPresentException
+        │     ├── NoSuchWindowException
+        │     └── NoSuchFrameException
+        ├── TimeoutException
+        ├── StaleElementReferenceException
+        ├── InvalidSelectorException
+        └── InvalidElementStateException
+              └── ElementNotInteractableException
+                    └── ElementClickInterceptedException</code></pre>
+
+<div class="win">
+  <span class="lbl">Three things that diagram tells you, and most people miss all three</span>
+  <p><strong>1.</strong> <code>WebDriverException</code> extends
+  <code>RuntimeException</code>, so <em>every</em> Selenium exception is unchecked. The
+  compiler never forces a catch. That is a design decision: a broken locator is a
+  programming error, not something the caller recovers from.</p>
+  <p><strong>2.</strong> <code>ElementClickIntercepted</code> extends
+  <code>ElementNotInteractable</code>. So catching the parent silently catches the child,
+  and you swallow the cookie-banner bug you were hunting.</p>
+  <p><strong>3.</strong> <code>WebDriverWait</code> ignores
+  <code>NotFoundException</code>, which covers <code>NoSuchElement</code>. But
+  <code>StaleElementReference</code> sits on a different branch, so it is
+  <strong>not</strong> ignored. A wait over a rerendering element blows up unless you say
+  <code>.ignoring(StaleElementReferenceException.class)</code>. That is the real reason
+  <code>FluentWait</code> exists.</p>
+</div>
+
+<h3>The five you must know by sight</h3>
+
+<table>
+  <thead><tr><th>Exception</th><th>What happened</th><th>The fix</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>NoSuchElementException</code></td>
+      <td>Nothing matched the locator, right now.</td>
+      <td>Check the locator first, it is usually a typo. Then check you are on the right page or inside the right frame. Then add an explicit wait.</td>
+    </tr>
+    <tr>
+      <td><code>TimeoutException</code></td>
+      <td>The locator may be fine. The <em>condition</em> never came true in time.</td>
+      <td>Ask whether you waited for the right condition. Waiting for presence when you needed visibility is the usual cause.</td>
+    </tr>
+    <tr>
+      <td><code>StaleElementReferenceException</code></td>
+      <td>You found it, then the page replaced that node. Your handle points at something the DOM threw away.</td>
+      <td>Re-find it. A longer wait cannot help, because the wait already succeeded once. Do not store <code>WebElement</code> fields on a page object.</td>
+    </tr>
+    <tr>
+      <td><code>ElementNotInteractableException</code></td>
+      <td>It is in the DOM but cannot receive input. Hidden, zero-sized, or off screen.</td>
+      <td><code>elementToBeClickable</code>, or scroll it into view. Check it is not <code>display:none</code>.</td>
+    </tr>
+    <tr>
+      <td><code>ElementClickInterceptedException</code></td>
+      <td>Something is on top of it. A cookie banner, a modal, a spinner.</td>
+      <td>Wait for the overlay to go with <code>invisibilityOfElementLocated</code>. Dismiss the banner. A JS click hides the problem rather than fixing it.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>The rest, one line each</h3>
+
+<table>
+  <tbody>
+    <tr><td><code>InvalidSelectorException</code></td><td>The selector is malformed. Classic cause: XPath passed to <code>By.cssSelector</code>.</td></tr>
+    <tr><td><code>NoAlertPresentException</code></td><td>You switched to an alert that is not open. Wait for <code>alertIsPresent</code>.</td></tr>
+    <tr><td><code>NoSuchWindowException</code></td><td>The handle you switched to is closed. Re-read <code>getWindowHandles()</code>.</td></tr>
+    <tr><td><code>NoSuchFrameException</code></td><td>Wrong frame name or index. Remember to <code>switchTo().defaultContent()</code> on the way out.</td></tr>
+    <tr><td><code>SessionNotCreatedException</code></td><td>The browser never started. Usually a browser and driver version mismatch.</td></tr>
+    <tr><td><code>WebDriverException</code></td><td>The catch-all parent. Seeing this raw usually means the session died.</td></tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <span class="lbl">The one that throws nothing at all</span>
+  <p>Clicking a <strong>disabled</strong> button raises no exception. Chrome swallows it.
+  Your test carries on and asserts against a page where the click never happened. Verified
+  in <a href="0002-waits.html">lesson 2</a> by a test that failed when it expected
+  <code>ElementNotInteractableException</code>.</p>
+  <p>An exception is the good case. It is the silent no-op that ruins your afternoon.</p>
+</div>
+
+<hr>
+
+<h2 id="stale">StaleElementReference, the one they probe</h2>
+
+<p>It is the favourite follow-up because it catches people who learned exceptions from a
+list. The trap: it sounds like a timing problem, so people add a longer wait, and it keeps
+happening.</p>
+
+<pre><code>WebElement row = driver.findElement(By.cssSelector("#list .row"));
+row.getText();                              // fine
+
+driver.findElement(By.id("rebuild")).click();   // page replaces the node
+
+row.getText();                              // StaleElementReferenceException</code></pre>
+
+<p><strong>Why a wait does not help.</strong> The wait already succeeded. You <em>have</em>
+the element. The problem is that the thing it points at no longer exists. Waiting longer
+just means waiting longer with a dead handle.</p>
+
+<p><strong>Two fixes.</strong> Re-find the element after the page settles, which is the
+normal answer. Or, when a component rerenders while you are polling it, tell the wait to
+ride it out:</p>
+
+<pre><code>Wait&lt;WebDriver&gt; wait = new FluentWait&lt;&gt;(driver)
+        .withTimeout(Duration.ofSeconds(5))
+        .pollingEvery(Duration.ofMillis(200))
+        .ignoring(StaleElementReferenceException.class);</code></pre>
+
+<p><strong>The design fix, which is the best answer.</strong> Never store
+<code>WebElement</code> as a field on a page object. Store the <code>By</code> and find it
+fresh each time. A locator cannot go stale; an element can. This is also the strongest
+argument against <code>PageFactory</code>, whose whole model is cached element
+proxies.</p>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="Unchecked. WebDriverException extends RuntimeException, so the compiler never forces you to catch one."
+  data-no="They are unchecked. WebDriverException extends RuntimeException, which is why a Selenium call needs no try/catch and no throws clause.">
+  <p class="q">Are Selenium's exceptions checked or unchecked?</p>
+  <button class="opt">Checked, so a throws clause is needed</button>
+  <button class="opt">Unchecked, the compiler never forces it</button>
+  <button class="opt">Checked for waits, unchecked for finds</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="The wait already succeeded once. The node it handed you has since been replaced, so the fix is to find it again."
+  data-no="A longer wait cannot help. The element was found; the page then replaced that node underneath you. You have to re-find it.">
+  <p class="q">You add a longer wait and still get
+  <code>StaleElementReferenceException</code>. Why?</p>
+  <button class="opt">The wait is on the wrong condition entirely</button>
+  <button class="opt">The timeout is still far too short</button>
+  <button class="opt">The node was replaced after you found it</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="It passes green. The application is broken, the test swallowed the proof, and nobody reads the printed line."
+  data-no="It does not fail. That is the whole danger: the catch block turns a real application bug into a passing test.">
+  <p class="q">A test wraps a click in <code>try/catch</code> and prints a message. The
+  button is missing. What happens?</p>
+  <button class="opt">The test passes and hides the bug</button>
+  <button class="opt">The test fails with a clear message</button>
+  <button class="opt">The test is reported as being skipped</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="ElementClickIntercepted extends ElementNotInteractable, so catching the parent quietly catches the child too."
+  data-no="They are not unrelated. ElementClickIntercepted is a subclass of ElementNotInteractable, so a catch on the parent swallows both.">
+  <p class="q">You catch <code>ElementNotInteractableException</code>. What else do you
+  now catch by accident?</p>
+  <button class="opt">TimeoutException, from every explicit wait</button>
+  <button class="opt">ElementClickIntercepted, its own subclass</button>
+  <button class="opt">Nothing, the two are entirely unrelated</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="A cookie banner, modal or spinner is on top, so the click lands on the overlay. Wait for the overlay to go."
+  data-no="The element is present and enabled. Something is covering it, which is why the click is intercepted rather than failing to find anything.">
+  <p class="q">A click throws <code>ElementClickInterceptedException</code>. What is
+  wrong?</p>
+  <button class="opt">The element is disabled at that moment</button>
+  <button class="opt">The locator matched two elements at once</button>
+  <button class="opt">Something is covering it on the page</button>
+</div>
+
+<hr>
+
+<h2>Run it</h2>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml -Dtest=ExceptionsTest</code></pre>
+
+<p>Ten tests, green as shipped, verified. Each one throws a real exception from a real
+page rather than describing it. Read <code>ExceptionsTest.java</code> alongside this page;
+the comments carry the same catalogue.</p>
+
+<h2>Tonight</h2>
+
+<ol>
+  <li>Cover the third column of the five-exception table and give the fix for each from
+  memory. Those five are the ones an interviewer names.</li>
+  <li>Say the <code>StaleElementReference</code> answer out loud in three sentences: what
+  happened, why a wait does not fix it, and the design rule about not storing
+  <code>WebElement</code> fields.</li>
+  <li>Have the sentence ready for "when do you catch an exception in a test?" The answer
+  is: in the framework, or to add context and rethrow. Not in the test.</li>
+</ol>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Oracle's <a href="https://docs.oracle.com/javase/tutorial/essential/exceptions/">Lesson:
+  Exceptions</a> for the Java half, in particular the page on unchecked exceptions and
+  the controversy around them. For the Selenium half the
+  <a href="https://www.selenium.dev/selenium/docs/api/java/org/openqa/selenium/WebDriverException.html">WebDriverException
+  javadoc</a> and its subclass list, which is the diagram above.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p><code>src/test/java/com/sdet/studyplan/selenium/ExceptionsTest.java</code> and
+  <code>src/test/resources/pages/lesson3.html</code>, both new and added to
+  <code>selenium.xml</code>. Ten tests, all green.</p>
+
+  <h3>Stuck?</h3>
+  <p>Ask me. Worth asking: "when is a JS click the right answer rather than a cheat?"
+  There is a real answer, and knowing where the line is separates you from someone who
+  reaches for <code>JavascriptExecutor</code> every time a click fails.</p>
+
+  <p class="nav">
+    <a href="0004-explaining-your-framework.html">&larr; Lesson 4</a>
+    <a href="0002-waits.html">Lesson 2: waits</a>
+    <a href="0006-locators.html">Lesson 6 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0004-explaining-your-framework.html">&larr; Lesson 4</a><a href="../../index.html#selenium">All lessons</a><a href="0006-locators.html">Lesson 6 &rarr;</a></p>
+</main>
+</body>
+</html>

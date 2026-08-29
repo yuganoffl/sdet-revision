@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2 · Waits</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0001-your-first-selenium-test.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0003-oop-in-your-framework.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 02 &middot; Selenium</p>
+<h1>Waits</h1>
+<p class="standfirst">The page is not ready and your test does not know it. This is the
+single biggest source of flaky UI tests, and "explain implicit versus explicit versus
+fluent" is close to guaranteed in an interview. Every number on this page was measured on
+your machine, on Selenium 4.21.0.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. An <strong>implicit</strong> wait answers one question: is it in the DOM yet?
+  Set once, applies to every <code>findElement</code>.<br>
+  2. An <strong>explicit</strong> wait waits for <strong>a condition</strong>, at one
+  point in the test. Visible, clickable, text changed, anything.<br>
+  3. <strong>Fluent</strong> is an explicit wait with the polling and the ignored
+  exceptions typed out by hand. <code>WebDriverWait</code> <em>is</em> a
+  <code>FluentWait</code>.<br>
+  4. Never mix implicit and explicit. Measured below: asking for 6 seconds got
+  8.5.</p>
+</div>
+
+<h2>The problem</h2>
+
+<p>Modern pages load, then keep changing. An API call finishes and a table appears. A
+spinner clears and a button turns on. Your test does not stop for any of that.</p>
+
+<p><code>findElement</code> asks the browser once. If nothing matches, it throws
+<code>NoSuchElementException</code> straight away.</p>
+
+<pre><code>driver.findElement(By.id("reveal")).click();
+driver.findElement(By.id("delayed"));   // throws. The element arrives 3s later.</code></pre>
+
+<p>The obvious fix is <code>Thread.sleep(3000)</code>. Do not do it, and be ready to say
+why. It costs three seconds even when the element was ready in 200ms, and it still fails
+on the day the server is slow. It is both slower and less reliable than waiting properly.
+Sleeps in a suite are the thing an interviewer is listening for.</p>
+
+<h2 id="implicit">1. Implicit wait</h2>
+
+<pre><code>driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));</code></pre>
+
+<p>One line. Set it once, and every <code>findElement</code> call for the rest of that
+driver's life will retry instead of failing immediately. The default is
+<code>0</code>.</p>
+
+<p>It is global, it is invisible at the call site, and it does exactly one thing:
+<strong>it retries until the element is in the DOM.</strong></p>
+
+<div class="warn">
+  <span class="lbl">Where it stops helping, and it fails silently</span>
+  <p>The practice page has a button that is present from the first millisecond but
+  <code>disabled</code> for two seconds. <code>findElement</code> returns it instantly, so
+  a 10 second implicit wait never engages at all.</p>
+  <p>Then the click does nothing. Chrome does <strong>not</strong> throw for a click on a
+  disabled button. No exception, no error, nothing red. The test carries on and asserts
+  against a page where the click never happened.</p>
+  <p>I expected an <code>ElementNotInteractableException</code> when I wrote this test.
+  There isn't one. That is worse, and it is the honest version of the story.</p>
+</div>
+
+<p>So an implicit wait cannot wait for: visible, enabled, clickable, the text to change,
+an element to <em>dis</em>appear, or a count of rows. All of those are normal things to
+wait for.</p>
+
+<h2 id="explicit">2. Explicit wait</h2>
+
+<pre><code>WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+WebElement delayed = wait.until(
+        ExpectedConditions.visibilityOfElementLocated(By.id("delayed")));</code></pre>
+
+<p>This waits for <strong>a named condition</strong>, at <strong>one point</strong> in the
+test. It polls every 500 milliseconds, and it swallows
+<code>NotFoundException</code> while it polls so a missing element is not an error yet. If
+the condition never comes true it throws <code>TimeoutException</code>.</p>
+
+<p>The two cases the implicit wait could not touch:</p>
+
+<pre><code>wait.until(ExpectedConditions.elementToBeClickable(By.id("later"))).click();
+
+wait.until(ExpectedConditions.textToBe(By.id("status"), "complete"));</code></pre>
+
+<p>Conditions worth being able to name out loud:</p>
+
+<table>
+  <thead><tr><th>Condition</th><th>Waits until</th></tr></thead>
+  <tbody>
+    <tr><td><code>presenceOfElementLocated</code></td><td>it is in the DOM. May still be hidden.</td></tr>
+    <tr><td><code>visibilityOfElementLocated</code></td><td>in the DOM <em>and</em> displayed.</td></tr>
+    <tr><td><code>elementToBeClickable</code></td><td>visible and enabled.</td></tr>
+    <tr><td><code>textToBe</code></td><td>the element's text equals what you said.</td></tr>
+    <tr><td><code>invisibilityOfElementLocated</code></td><td>it has gone, or hidden. The spinner case.</td></tr>
+    <tr><td><code>alertIsPresent</code></td><td>a native alert has opened.</td></tr>
+    <tr><td><code>numberOfElementsToBe</code></td><td>the locator matches exactly N things.</td></tr>
+  </tbody>
+</table>
+
+<p class="aside">Presence versus visibility is a real interview follow-up.
+<code>presence</code> is satisfied by an element with
+<code>display:none</code>, and then your <code>getText()</code> returns an empty string
+and the assertion fails somewhere confusing. Reach for <code>visibility</code> unless you
+have a reason not to.</p>
+
+<h2 id="fluent">3. Fluent wait</h2>
+
+<pre><code>Wait&lt;WebDriver&gt; wait = new FluentWait&lt;&gt;(driver)
+        .withTimeout(Duration.ofSeconds(10))
+        .pollingEvery(Duration.ofMillis(250))
+        .ignoring(NoSuchElementException.class);
+
+WebElement delayed = wait.until(d -&gt; d.findElement(By.id("delayed")));</code></pre>
+
+<p>Three knobs: how long, how often, and which exceptions to swallow while polling.</p>
+
+<div class="win">
+  <span class="lbl">The line that makes this question easy</span>
+  <p><code>WebDriverWait</code> <strong>extends</strong> <code>FluentWait</code>. I checked
+  the bytecode in <code>selenium-support-4.21.0.jar</code> on this machine: its constructor
+  calls <code>withTimeout(yourDuration)</code>, then
+  <code>pollingEvery(500ms)</code>, then <code>ignoring(NotFoundException.class)</code>.</p>
+  <p>So they are not two mechanisms. Fluent is the general one; <code>WebDriverWait</code>
+  is the same object with sensible defaults already filled in. Say that and you have
+  answered better than someone reciting three bullet points.</p>
+</div>
+
+<p>Which means you only reach for <code>FluentWait</code> when you want to change one of
+those defaults. Polling a slow, expensive condition less often. Or ignoring
+<code>StaleElementReferenceException</code> on a table that rerenders underneath you,
+which is the classic real use.</p>
+
+<h2 id="mixing">4. Why you must not mix them</h2>
+
+<p>The Selenium documentation says it flatly:</p>
+
+<blockquote>Do not mix implicit and explicit waits. Doing so can cause unpredictable wait
+times. For example, setting an implicit wait of 10 seconds and an explicit wait of 15
+seconds could cause a timeout to occur after 20 seconds.</blockquote>
+
+<p>That is a claim, so I measured it. Two tests, same missing element, same 6 second
+explicit wait. One has a 4 second implicit wait set, the other has none.</p>
+
+<pre><code>EXPLICIT ONLY:  explicit 6s               timed out after 6183ms
+MIXED WAITS:    implicit 4s + explicit 6s timed out after 8526ms</code></pre>
+
+<p>You asked for six seconds and got eight and a half. Stable across runs, within about
+50ms.</p>
+
+<p><strong>Why.</strong> The explicit wait polls by calling <code>findElement</code>. Once
+an implicit wait is set, each of those polls now blocks for up to four seconds on its own.
+A poll that starts just before the six second deadline still has to run to completion. So
+your real timeout is the explicit timeout plus up to one implicit wait, and nobody
+reading the test can see it.</p>
+
+<p><strong>The rule.</strong> Pick one. In practice: leave the implicit wait at
+<code>0</code>, never set it, and use explicit waits everywhere. That is what a framework
+does, and it is the answer to "which do you use and why".</p>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="3"
+  data-ok="It only ever retries the lookup. Presence in the DOM is the one thing it knows how to wait for."
+  data-no="An implicit wait retries findElement until the element exists. It has no idea whether that element is visible, enabled or showing the right text.">
+  <p class="q">What is the only question an implicit wait can answer?</p>
+  <button class="opt">Has this element finished loading fully</button>
+  <button class="opt">Is this element ready to be clicked</button>
+  <button class="opt">Is this element in the DOM yet</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="No exception at all. Chrome swallows the click, the test carries on, and the assertion fails somewhere unrelated."
+  data-no="It throws nothing. That was the surprise when this lesson was written: a click on a disabled button is silently ignored, which is worse than an error.">
+  <p class="q">You click a button that is present but <code>disabled</code>. What does
+  Selenium throw?</p>
+  <button class="opt">ElementNotInteractableException, straight away</button>
+  <button class="opt">Nothing at all, the click vanishes</button>
+  <button class="opt">TimeoutException once the wait expires</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="WebDriverWait extends FluentWait, with the timeout you pass, 500ms polling and NotFoundException ignored."
+  data-no="They are the same machinery. WebDriverWait is a subclass of FluentWait that fills in 500ms polling and ignores NotFoundException for you.">
+  <p class="q">How is <code>WebDriverWait</code> related to
+  <code>FluentWait</code>?</p>
+  <button class="opt">It is a FluentWait with defaults filled in</button>
+  <button class="opt">It is a faster and separate wait mechanism</button>
+  <button class="opt">It is the older API that FluentWait replaced</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="Roughly the explicit timeout plus one implicit wait, because each poll now blocks for the implicit duration."
+  data-no="It is not either number on its own. Each poll of the explicit wait blocks for up to the implicit wait, so they add. Measured here: 4 + 6 gave 8.5 seconds.">
+  <p class="q">Implicit wait 4s, explicit wait 6s, element never appears. When does it
+  time out?</p>
+  <button class="opt">At six seconds, the explicit wait wins</button>
+  <button class="opt">Later than six, they add together</button>
+  <button class="opt">At four seconds, the implicit wait wins</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="Presence is satisfied by a hidden element, so getText comes back empty and the failure surfaces somewhere confusing."
+  data-no="Presence only means it is in the DOM. An element with display:none satisfies it, so you can pass the wait and still read an empty string.">
+  <p class="q">Why prefer <code>visibilityOfElementLocated</code> over
+  <code>presenceOfElementLocated</code>?</p>
+  <button class="opt">Presence is much slower to evaluate</button>
+  <button class="opt">Presence is deprecated in Selenium 4</button>
+  <button class="opt">Presence passes for a hidden element</button>
+</div>
+
+<hr>
+
+<h2>Run it</h2>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml -Dtest=WaitsTest</code></pre>
+
+<p>Ten tests, all green as shipped. Watch it happen instead:</p>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml -Dtest=WaitsTest -Dheadless=false</code></pre>
+
+<h2>Before the interview</h2>
+
+<ol>
+  <li>Read the two printed lines in the output. Confirm the mixed-wait number on your own
+  run, then change the implicit wait to 8 seconds and predict the new total before you
+  rerun it.</li>
+  <li>Delete the <code>ExpectedConditions</code> from
+  <code>explicitWaitForClickability</code> and click <code>#later</code> directly. Watch
+  the test pass while doing nothing.</li>
+  <li>Say the fluent-versus-explicit answer out loud once. If it takes more than twenty
+  seconds, cut it down.</li>
+</ol>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p><a href="https://www.selenium.dev/documentation/webdriver/waits/">Waiting
+  strategies</a> in the official documentation. Short, and the mixing warning is quoted
+  above word for word.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p><code>src/test/java/com/sdet/studyplan/selenium/WaitsTest.java</code> and
+  <code>src/test/resources/pages/lesson2.html</code>, both new. Added to
+  <code>selenium.xml</code>. Ten tests, verified green over two runs.</p>
+
+  <h3>Stuck?</h3>
+  <p>Ask me, and today nothing is too small to ask. Worth asking: "what actually is
+  <code>StaleElementReferenceException</code> and why does a wait not fix it?" That one
+  catches people out because the element was found, and then the page replaced it.</p>
+
+  <p class="nav">
+    <a href="0001-your-first-selenium-test.html">&larr; Lesson 1</a>
+    <a href="../reference/driver-setup.html">Reference</a>
+    <a href="0003-oop-in-your-framework.html">Lesson 3 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0001-your-first-selenium-test.html">&larr; Lesson 1</a><a href="../../index.html#selenium">All lessons</a><a href="0003-oop-in-your-framework.html">Lesson 3 &rarr;</a></p>
+</main>
+</body>
+</html>

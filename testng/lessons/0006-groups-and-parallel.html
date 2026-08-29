@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6 · Groups and parallel</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0005-controlling-execution.html">&larr;</a><a class="tb-home" href="../../index.html#testng">TestNG</a><a class="tb-next" href="0007-listeners-reports-and-the-talk.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 06 &middot; TestNG &middot; rewritten 28 Aug</p>
+<h1>Groups, and running things at the same time</h1>
+<p class="standfirst">This lesson holds two separate topics. They share a lesson only
+because you configure both in <code>testng.xml</code>. Read part A, stop, then read
+part B. Do not try to hold both at once.</p>
+
+<div class="note">
+  <span class="lbl">The two topics, one line each</span>
+  <p><strong>A. Groups.</strong> Put a label on a test. The XML picks which labels
+  run.<br>
+  <strong>B. Parallel.</strong> One attribute decides which unit gets its own thread.
+  Then shared state becomes a bug.</p>
+</div>
+
+<hr>
+
+<h2 id="groups">Part A: groups</h2>
+
+<p><strong>The problem.</strong> You have four hundred tests. Before a merge you want
+ten of them. Overnight you want all four hundred. Before a release you want the payment
+ones. Writing three separate suite files means three class lists, and they drift apart.</p>
+
+<p><strong>The fix.</strong> Label the test method. Then filter on the label.</p>
+
+<p>The label goes in the annotation. You already wrote this, in July, in
+<code>SampleTest.java</code>:</p>
+
+<pre><code>@Test(groups = "smoke")                      public void loginTest()
+@Test(groups = "regression")                 public void checkoutTest()
+@Test(groups = { "smoke", "regression" })    public void profileTest()
+@Test                                        public void plainTest()    // no label
+</code></pre>
+
+<p>A test can carry many labels, or none.</p>
+
+<p>The filter goes in the XML:</p>
+
+<pre><code>&lt;test name="SmokeOnly"&gt;
+  &lt;groups&gt;&lt;run&gt;
+    &lt;include name="smoke"/&gt;
+  &lt;/run&gt;&lt;/groups&gt;
+  &lt;classes&gt;&lt;class name="com.sdet.studyplan.testng.SampleTest"/&gt;&lt;/classes&gt;
+&lt;/test&gt;
+</code></pre>
+
+<p class="filename">groups-demo.xml, in your project root</p>
+
+<p>That runs <code>loginTest</code> and <code>profileTest</code>. Two tests, not four.</p>
+
+<h3>The two rules that matter</h3>
+
+<div class="warn">
+  <span class="lbl">Rule 1 &mdash; include means <em>only</em> these</span>
+  <p>A test with no <code>groups</code> attribute matches nothing, so it does not run.
+  <code>plainTest</code> disappears. Nothing warns you. This is how somebody writes a new
+  test, forgets the label, and it silently stops being part of the smoke suite.</p>
+</div>
+
+<div class="warn">
+  <span class="lbl">Rule 2 &mdash; exclude beats include</span>
+  <p>Swap the include for <code>&lt;exclude name="regression"/&gt;</code> and
+  <code>profileTest</code> vanishes, even though it is also tagged
+  <code>smoke</code>. Being in one excluded group is enough to keep a test out,
+  whatever else it is tagged with.</p>
+</div>
+
+<p>You can also filter from the command line, which is quicker while you are
+experimenting:</p>
+
+<pre><code>mvn test -Dtest=SampleTest -Dgroups=smoke</code></pre>
+
+<p class="aside">Two extras exist. <code>&lt;include name=".*smoke.*"/&gt;</code> takes a
+regular expression, so a naming convention becomes a filter. And
+<code>&lt;define name="all"&gt;</code> builds a group of groups, so <code>all</code> can
+mean smoke plus regression without retagging anything.</p>
+
+<h3>@BeforeGroups, the scope lesson 2 parked</h3>
+
+<p><a href="0002-the-lifecycle-annotations.html">Lesson 2</a> listed five scopes and
+deferred one. <code>@BeforeGroups("smoke")</code> runs once before the first method of
+that group, and <code>@AfterGroups("smoke")</code> once after the last, wherever those
+methods live.</p>
+
+<pre><code>   regression r1
+@BeforeGroups smoke
+   smoke s1
+   smoke s2
+@AfterGroups  smoke
+</code></pre>
+
+<p>It did not fire around <code>r1</code>. It fired once for two smoke methods. This
+scope hangs off a label rather than off the nesting boxes, which is why it never fitted
+the diagram.</p>
+
+<hr>
+
+<h2 id="parallel">Part B: parallel</h2>
+
+<p>Four hundred UI tests at fifteen seconds each is a ninety minute wait. Nobody runs a
+ninety minute suite before merging. One attribute on <code>&lt;suite&gt;</code> fixes
+that.</p>
+
+<h3>The rule, in three steps</h3>
+
+<div class="note">
+  <span class="lbl">How to read any parallel setting</span>
+  <p>1. The value names a <strong>unit</strong>. <code>parallel="X"</code> means one
+  thread per X.<br>
+  2. Count how many of that unit the suite has. That is your number of threads.<br>
+  3. Everything <em>inside</em> the unit stays on one thread, in order.</p>
+</div>
+
+<p>Step 3 is the one people miss. The unit is the smallest thing that gets its own
+thread. Anything below it runs one after the other.</p>
+
+<pre><code>suite
+ └── &lt;test&gt; tag      parallel="tests"     thread per tag
+      └── class       parallel="classes"   thread per class
+           └── method  parallel="methods"   thread per method
+</code></pre>
+
+<h3>The same file, run four ways</h3>
+
+<p><code>parallel-demo.xml</code> has two <code>&lt;test&gt;</code> tags, one class in
+each, three methods per class. Six methods in total. Every method prints its own thread
+name.</p>
+
+<div class="sbs">
+  <div>
+    <p class="cap">no parallel attribute &mdash; 1 thread</p>
+<pre><code>main    [A] a1
+main    [A] a2
+main    [A] a3
+main    [B] b1
+main    [B] b2
+main    [B] b3</code></pre>
+  </div>
+  <div>
+    <p class="cap">parallel="methods" &mdash; 6 threads</p>
+<pre><code>TagOne-3   [A] a3
+TagOne-2   [A] a2
+TagOne-1   [A] a1
+TagTwo-3   [B] b3
+TagTwo-2   [B] b2
+TagTwo-1   [B] b1</code></pre>
+  </div>
+  <div>
+    <p class="cap">parallel="classes" &mdash; 2 threads</p>
+<pre><code>TagOne-1   [A] a1
+TagOne-1   [A] a2
+TagOne-1   [A] a3
+TagTwo-1   [B] b1
+TagTwo-1   [B] b2
+TagTwo-1   [B] b3</code></pre>
+  </div>
+  <div>
+    <p class="cap">parallel="tests" &mdash; 2 threads</p>
+<pre><code>tests-1   [A] a1
+tests-2   [B] b1
+tests-1   [A] a2
+tests-2   [B] b2
+tests-1   [A] a3
+tests-2   [B] b3</code></pre>
+  </div>
+</div>
+
+<div class="win">
+  <span class="lbl">Read the thread names, not the order</span>
+  <p>The order shuffles every run. It is noise. The thread name is the fact: it tells
+  you how many workers there were, and which methods each one got.</p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>value</th><th>unit</th><th>threads here</th><th>what stays together</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>(none)</td><td>nothing</td><td>1</td><td>everything, in order</td></tr>
+    <tr><td><code>tests</code></td><td>&lt;test&gt; tag</td><td>2</td><td>all methods in a tag</td></tr>
+    <tr><td><code>classes</code></td><td>class</td><td>2</td><td>all methods in a class</td></tr>
+    <tr><td><code>methods</code></td><td>method</td><td>6</td><td>nothing</td></tr>
+  </tbody>
+</table>
+
+<p><code>classes</code> and <code>tests</code> both gave two threads. That is not a rule.
+This file happens to hold exactly one class per tag, so "split by class" and "split by
+tag" are the same split. Put three classes in one tag and <code>classes</code> jumps to
+four while <code>tests</code> stays at two.</p>
+
+<h3>tests versus methods, the difference that matters</h3>
+
+<p>Both make the suite faster. They differ in what they guarantee.</p>
+
+<pre><code>tests     tests-1:  a1 → a2 → a3        one thread, in order
+          tests-2:  b1 → b2 → b3
+
+methods   TagOne-1: a1 | TagOne-2: a2 | TagOne-3: a3     all at once
+          TagTwo-1: b1 | TagTwo-2: b2 | TagTwo-3: b3
+</code></pre>
+
+<p>Under <code>tests</code>, a2 starts after a1 finishes. They share a thread, so they
+can share state safely.</p>
+
+<p>Under <code>methods</code>, a1, a2 and a3 race each other. There is no order, and
+nothing they share is safe.</p>
+
+<p>So <code>methods</code> is the fast one and the dangerous one. A suite can pass on
+<code>tests</code> for a year and fall apart the day somebody switches it to
+<code>methods</code>.</p>
+
+<h3>thread-count</h3>
+
+<pre><code>&lt;suite name="ParallelDemo" parallel="methods" thread-count="4"&gt;</code></pre>
+
+<p><code>thread-count</code> is the ceiling, and it defaults to 5. Forty methods with
+<code>thread-count="4"</code> gives you four threads working through forty jobs, not
+forty threads. It is the size of the pool, not a promise:
+<code>parallel="tests"</code> with two tags uses two threads whatever you set.</p>
+
+<p>Setting it to <code>1</code> makes the run sequential again. That is the quickest way
+to find out whether a failure is a real bug or a threading problem.</p>
+
+<p class="aside">A fourth value, <code>instances</code>, threads by test-class instance
+and only matters when you use factories. Park it. Two switches also work without a suite
+file: <code>@Test(invocationCount = 6, threadPoolSize = 3)</code> runs one method six
+times, three at a time; and <code>@DataProvider(parallel = true)</code> runs
+<a href="0004-dataprovider-and-excel.html">lesson 4's</a> rows concurrently. The provider
+pool is sized by <code>data-provider-thread-count</code>, a different setting from
+<code>thread-count</code>.</p>
+
+<hr>
+
+<h2 id="shared-state">Part C: the part that actually bites</h2>
+
+<p>Everything above is one attribute. This is the reason parallel suites fail.</p>
+
+<p>Two threads run the same class. They share one instance of it. So they share its
+fields.</p>
+
+<pre><code>private String shared;                                  // one box, two threads
+private ThreadLocal&lt;String&gt; safe = new ThreadLocal&lt;&gt;(); // one box per thread
+</code></pre>
+
+<p><code>ThreadSafetyTest.java</code> has two methods. Each writes its own value into
+both, sleeps, then prints what it reads back. Run it with
+<code>thread-safety.xml</code>, which is <code>parallel="methods"</code>:</p>
+
+<pre><code>t2   shared=one   threadLocal=two
+t1   shared=one   threadLocal=one</code></pre>
+
+<p><code>t2</code> wrote <code>"two"</code> and read back <code>"one"</code>. The other
+thread overwrote the field while t2 was sleeping. The <code>ThreadLocal</code> column is
+right in both rows, because each thread got its own copy.</p>
+
+<div class="warn">
+  <span class="lbl">Run it three times and the corruption moves</span>
+  <p>Sometimes t1 is the corrupted row, sometimes t2. That non-determinism is the whole
+  problem. The test passes on your laptop, fails in CI on a Tuesday, and passes again
+  when you rerun it.</p>
+</div>
+
+<div class="win">
+  <span class="lbl">The framework answer, in one paragraph</span>
+  <p>This is why a parallel Selenium framework never keeps <code>WebDriver</code> in a
+  plain field. It goes in a <code>ThreadLocal&lt;WebDriver&gt;</code>, usually inside a
+  small <code>DriverFactory</code>. <code>@BeforeMethod</code> calls
+  <code>set()</code>. The test fetches it with <code>get()</code>.
+  <code>@AfterMethod</code> calls <code>quit()</code> and then <code>remove()</code>.
+  Miss the <code>remove()</code> and the dead driver stays attached to a pooled thread,
+  so you leak browsers. Say that in an interview and you have answered the most common
+  framework design question there is.</p>
+</div>
+
+<p>Three other things break under parallelism, worth naming out loud: <code>static</code>
+fields anywhere in the framework, tests that share one login or one database row, and
+<code>dependsOnMethods</code> chains. TestNG honours dependencies under parallelism, so a
+long chain quietly serialises the speedup you just paid for.</p>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="An include filters down to tagged tests only, so anything untagged is left out entirely."
+  data-no="Include means only these. A test with no groups matches nothing, so it never runs. This is how new tests silently drop out of a smoke suite.">
+  <p class="q">Your XML has <code>&lt;include name="smoke"/&gt;</code>. What happens to a
+  <code>@Test</code> with no <code>groups</code> attribute?</p>
+  <button class="opt">It runs, because untagged means always</button>
+  <button class="opt">It does not run at all, ever</button>
+  <button class="opt">It runs and is reported as skipped</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="Exclusion wins. Being in an excluded group is enough to keep a test out, whatever else it is tagged with."
+  data-no="Exclude beats include. The test is tagged regression, and regression is excluded, so it stays out even though smoke is included.">
+  <p class="q">A test is tagged <code>{ "smoke", "regression" }</code>. The XML includes
+  smoke and excludes regression. Does it run?</p>
+  <button class="opt">Yes, because include is listed first</button>
+  <button class="opt">Yes, because one matching group wins</button>
+  <button class="opt">No, because an exclusion always wins</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="Each tag gets its own thread, which is why the tag is the unit of browser isolation."
+  data-no="Threading per class or per method puts both browsers inside the same tag, sharing its @BeforeTest setup. You want one thread per tag.">
+  <p class="q">You want Chrome and Firefox running at the same time, each set up by its
+  own <code>@BeforeTest</code>. Which value?</p>
+  <button class="opt">parallel="tests"</button>
+  <button class="opt">parallel="classes"</button>
+  <button class="opt">parallel="methods"</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="One instance, two threads, one field. Each thread needs its own copy, which is exactly what ThreadLocal gives you."
+  data-no="The field is not wrong by being a field. The problem is that both threads share one instance of the class, so they share it. ThreadLocal gives each thread its own copy.">
+  <p class="q">Under <code>parallel="methods"</code>, why does a plain
+  <code>WebDriver</code> field break?</p>
+  <button class="opt">TestNG builds a new instance per thread</button>
+  <button class="opt">A WebDriver object cannot be reused twice</button>
+  <button class="opt">Both threads share one instance, so one field</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="One thread per tag, and everything inside a tag runs on it in order. Six methods, two tags, two threads."
+  data-no="Count the unit named by the attribute, not the methods. parallel=&quot;tests&quot; threads the tag, so two tags give two threads however many methods sit inside them.">
+  <p class="q">A suite has two <code>&lt;test&gt;</code> tags holding six methods each,
+  and <code>parallel="tests"</code>. How many threads run?</p>
+  <button class="opt">Twelve, one for each method</button>
+  <button class="opt">Two, one for each tag</button>
+  <button class="opt">Five, the thread-count default</button>
+</div>
+
+<hr>
+
+<h2>Before the next lesson</h2>
+
+<ol>
+  <li>Run <code>groups-demo.xml</code>. Then comment out the
+  <code>&lt;include&gt;</code>, uncomment the <code>&lt;exclude&gt;</code>, rerun, and
+  account for every test that appears and disappears.</li>
+  <li>Run <code>parallel-demo.xml</code> four times, changing only the
+  <code>parallel</code> attribute. Read the thread names each time, and count the
+  distinct ones before you look at the table above.</li>
+  <li>Set <code>thread-count="1"</code> with <code>parallel="methods"</code> and confirm
+  it goes sequential.</li>
+  <li>Run <code>thread-safety.xml</code> three times. Watch the corrupted row move.</li>
+  <li>Tag two of your own tests <code>smoke</code> and run them from a
+  <code>testng.xml</code> you wrote yourself.</li>
+</ol>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=parallel-demo.xml</code></pre>
+
+<p><a href="0007-listeners-reports-and-the-talk.html">Lesson 7</a> is the last one:
+listeners, the reports, and how to describe the whole framework out loud. That last part
+is the interview itself, so most of it is words rather than code.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p><a href="https://testng.org/index.html#_test_groups">Test groups</a> and
+  <a href="https://testng.org/index.html#_running_testng_in_parallel_mode">Running tests
+  in parallel</a> in the official documentation. The parallel section is shorter than you
+  expect, which tells you the hard part is not the syntax.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p>New: <code>ParallelAlphaTest.java</code>, <code>ParallelBetaTest.java</code>,
+  <code>ThreadSafetyTest.java</code>, <code>parallel-demo.xml</code>,
+  <code>thread-safety.xml</code>, <code>groups-demo.xml</code>. Existing:
+  <code>SampleTest.java</code>, which you wrote.</p>
+
+  <h3>Stuck on anything?</h3>
+  <p>Ask me. I am your teacher for this, so a half-formed question is fine. Worth asking:
+  "how do I take a screenshot only when a parallel test fails?" That needs a listener and
+  a thread-safe driver at the same time, which is lesson 7 meeting this one.</p>
+
+  <p class="nav">
+    <a href="0005-controlling-execution.html">&larr; Lesson 5</a>
+    <a href="../reference/annotations-and-lifecycle.html">Reference</a>
+    <a href="0007-listeners-reports-and-the-talk.html">Lesson 7 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0005-controlling-execution.html">&larr; Lesson 5</a><a href="../../index.html#testng">All lessons</a><a href="0007-listeners-reports-and-the-talk.html">Lesson 7 &rarr;</a></p>
+</main>
+</body>
+</html>

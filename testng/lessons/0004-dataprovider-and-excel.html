@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 · @DataProvider and Excel</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0003-testng-xml-and-the-test-tag.html">&larr;</a><a class="tb-home" href="../../index.html#testng">TestNG</a><a class="tb-next" href="0005-controlling-execution.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 04 &middot; TestNG</p>
+<h1>@DataProvider, fed from an Excel sheet</h1>
+<p class="standfirst">One test method, twenty rows of input, twenty results in the
+report. This is the most asked-about feature in TestNG interviews, and the half you
+already wrote months ago is the Excel half.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. A <code>@DataProvider</code> is a method that returns rows of arguments.<br>
+  2. A <code>@Test</code> bound to one runs <strong>once per row</strong>, and each row
+  gets its own pass or fail in the report.<br>
+  3. The rows can come from anywhere, because it is just Java. Excel is the common
+  source.<br>
+  4. Reading the sheet is Apache POI's job, not TestNG's. Keep the two apart.</p>
+</div>
+
+<div class="win">
+  <span class="lbl">Already in your repo</span>
+  <p><code>DataTable.readAsTable()</code> in
+  <code>src/main/java/com/sdet/studyplan/excel/</code> turns a sheet into a
+  <code>List&lt;Map&lt;String,String&gt;&gt;</code>, one map per row keyed by the header
+  names. You wrote it in July. Its javadoc says "hand the list to a TestNG
+  @DataProvider". This lesson is you cashing that in.</p>
+</div>
+
+<h2>Why not just loop?</h2>
+
+<p>The obvious move is a <code>for</code> loop inside one <code>@Test</code>. It looks
+like it does the job. Here are both approaches run against the same three words, with
+<code>hello</code> deliberately marked as a palindrome so one row must fail.</p>
+
+<div class="sbs">
+  <div>
+    <p class="cap">a loop inside one @Test</p>
+<pre><code>checking madam
+checking hello
+<span class="c">(racecar never printed)</span>
+
+Tests run: 1, Failures: 1
+
+<span class="hl">TmpLoopTest.allWords
+  expected [true]
+  but found [false]</span></code></pre>
+  </div>
+  <div>
+    <p class="cap">the same data as a @DataProvider</p>
+<pre><code>Tests run: 3, Failures: 1
+
+<span class="hl">isPalindrome[hello, true](2)
+  wrong verdict for 'hello'
+  expected [true]
+  but found [false]</span>
+
+<span class="c">madam and racecar still ran</span></code></pre>
+  </div>
+</div>
+
+<p>Three things the loop got wrong, and all three are the answer when an interviewer
+asks why data providers exist.</p>
+
+<p><strong>The loop stopped at the first failure.</strong> A failed assertion throws,
+so <code>racecar</code> was never checked. You fix <code>hello</code>, rerun, and only
+then discover the next broken row. Twenty rows means twenty round trips.</p>
+
+<p><strong>The loop reported one result.</strong> "1 test, 1 failure" tells your
+manager nothing. The provider reported 3 tests and 1 failure, which is the true state
+of the system.</p>
+
+<p><strong>The loop hid which input broke.</strong> Look at the provider's failure
+name: <code>isPalindrome[hello, true](2)</code>. TestNG puts the row's arguments in the
+test name for free. No logging, no message building.</p>
+
+<h2>The mechanism, with hardcoded rows</h2>
+
+<p>Learn it with no Excel in the way. This file is already in your repo.</p>
+
+<p class="filename">src/test/java/com/sdet/studyplan/testng/DataProviderBasicsTest.java</p>
+<pre><code><span class="k">public class</span> DataProviderBasicsTest {
+
+    <span class="k">@DataProvider</span>(name = <span class="s">"words"</span>)
+    <span class="k">public</span> Object[][] words() {
+        <span class="k">return new</span> Object[][] {
+            { <span class="s">"madam"</span>,   <span class="k">true</span>  },
+            { <span class="s">"racecar"</span>, <span class="k">true</span>  },
+            { <span class="s">"hello"</span>,   <span class="k">false</span> },
+            { <span class="s">"Madam"</span>,   <span class="k">false</span> },
+        };
+    }
+
+    <span class="k">@Test</span>(dataProvider = <span class="s">"words"</span>)
+    <span class="k">public void</span> isPalindrome(String word, <span class="k">boolean</span> expected) {
+        Assert.assertEquals(Palindrome.usingTwoPointers(word), expected,
+                <span class="s">"wrong verdict for '"</span> + word + <span class="s">"'"</span>);
+    }
+}</code></pre>
+
+<pre><code>mvn test -Dtest=DataProviderBasicsTest</code></pre>
+
+<pre><code><span class="hl">Tests run: 4</span>, Failures: 0, Errors: 0, Skipped: 0</code></pre>
+
+<p>One <code>@Test</code> method in the file. Four results. That is the whole idea.</p>
+
+<p><code>Madam</code> with a capital M is in there on purpose. Your
+<code>usingTwoPointers</code> compares characters directly, so case matters, and the
+sheet records that as expected behaviour rather than leaving it undiscovered.</p>
+
+<h3>The contract</h3>
+
+<div class="scroll-x">
+<table>
+  <caption>What TestNG requires of a provider</caption>
+  <tr><th>Rule</th><th>Detail</th></tr>
+  <tr><td>Return type</td><td><code>Object[][]</code>, or <code>Iterator&lt;Object[]&gt;</code> for large or lazily-read data</td></tr>
+  <tr><td>Outer array</td><td>one element per test run. Four inner arrays means four runs</td></tr>
+  <tr><td>Inner array</td><td>the arguments for one run, in parameter order</td></tr>
+  <tr><td>Method signature</td><td>the <code>@Test</code> parameters must match the inner array in count and type</td></tr>
+  <tr><td>The name</td><td><code>@DataProvider(name = "x")</code> and <code>@Test(dataProvider = "x")</code> must agree. Omit <code>name</code> and it defaults to the method name</td></tr>
+  <tr><td>Where it lives</td><td>same class by default. Elsewhere with <code>@Test(dataProvider = "x", dataProviderClass = TestData.class)</code>, which is how real frameworks share one provider across many tests</td></tr>
+  <tr><td>Exceptions</td><td>it may declare <code>throws</code>. Useful, since reading a file does</td></tr>
+</table>
+</div>
+
+<div class="warn">
+  <span class="lbl">The error you will hit first</span>
+  <p>Get the parameter count or type wrong and TestNG fails the test before your code
+  runs, with a message about the data provider not matching the method signature. It is
+  not a compile error, because the wiring happens by reflection at runtime. Read the
+  message and count the columns.</p>
+</div>
+
+<h2>Now from Excel</h2>
+
+<h3 class="step"><span class="n">Step 1</span> The sheet</h3>
+
+<p><code>testdata/palindrome-data.xlsx</code> is in your repo. Two columns, seven data
+rows. Open it in Excel and it looks like this:</p>
+
+<div class="scroll-x">
+<table>
+  <caption>testdata/palindrome-data.xlsx, sheet "Words"</caption>
+  <tr><th>Word</th><th>Expected</th><th>why it is there</th></tr>
+  <tr><td>madam</td><td>true</td><td>the happy case</td></tr>
+  <tr><td>racecar</td><td>true</td><td>odd length</td></tr>
+  <tr><td>hello</td><td>false</td><td>the negative case</td></tr>
+  <tr><td>Madam</td><td>false</td><td>case sensitivity, recorded on purpose</td></tr>
+  <tr><td>(blank)</td><td>true</td><td>empty string, an edge case people forget</td></tr>
+  <tr><td>a</td><td>true</td><td>single character</td></tr>
+  <tr><td>12321</td><td>true</td><td><strong>a numeric cell.</strong> This one is a trap, see below</td></tr>
+</table>
+</div>
+
+<p>This is the real argument for keeping data in a sheet. Adding a case is a row in
+Excel, and a tester who does not write Java can add it. Nothing recompiles.</p>
+
+<h3 class="step"><span class="n">Step 2</span> The reader you already wrote</h3>
+
+<p><code>DataTable.readAsTable("path.xlsx")</code> gives you back:</p>
+
+<pre><code>[ {Word=madam,   Expected=true},
+  {Word=racecar, Expected=true},
+  {Word=hello,   Expected=false}, ... ]</code></pre>
+
+<p>Keyed by header name, so no magic column indexes anywhere in your tests. Rename a
+column in Excel and exactly one line of Java changes. The POI vocabulary underneath is
+one-to-one with what you see on screen: <code>Workbook</code> is the file,
+<code>Sheet</code> is a tab, <code>Row</code> is a line, <code>Cell</code> is a box.</p>
+
+<h3 class="step"><span class="n">Step 3</span> Wrap it in a provider</h3>
+
+<p>There are two shapes, and both are in
+<code>ExcelDataProviderTest.java</code> in your repo. Run them and compare.</p>
+
+<div class="sbs">
+  <div>
+    <p class="cap">Shape A: unpacked into typed arguments</p>
+<pre><code><span class="k">@DataProvider</span>(name = <span class="s">"wordsFromExcel"</span>)
+<span class="k">public</span> Object[][] wordsFromExcel()
+        <span class="k">throws</span> IOException {
+
+    List&lt;Map&lt;String,String&gt;&gt; rows =
+        DataTable.readAsTable(WORDS);
+
+    Object[][] data =
+        <span class="k">new</span> Object[rows.size()][2];
+
+    <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; rows.size(); i++) {
+        data[i][0] = rows.get(i).get(<span class="s">"Word"</span>);
+        data[i][1] = Boolean.parseBoolean(
+            rows.get(i).get(<span class="s">"Expected"</span>));
+    }
+    <span class="k">return</span> data;
+}
+
+<span class="k">@Test</span>(dataProvider = <span class="s">"wordsFromExcel"</span>)
+<span class="k">public void</span> isPalindrome(
+        String word, <span class="k">boolean</span> expected) {
+    ...
+}</code></pre>
+  </div>
+  <div>
+    <p class="cap">Shape B: the whole row as a Map</p>
+<pre><code><span class="k">@DataProvider</span>(name = <span class="s">"rowsFromExcel"</span>)
+<span class="k">public</span> Object[][] rowsFromExcel()
+        <span class="k">throws</span> IOException {
+
+    List&lt;Map&lt;String,String&gt;&gt; rows =
+        DataTable.readAsTable(WORDS);
+
+    Object[][] data =
+        <span class="k">new</span> Object[rows.size()][1];
+
+    <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; rows.size(); i++) {
+        data[i][0] = rows.get(i);
+    }
+    <span class="k">return</span> data;
+}
+
+<span class="k">@Test</span>(dataProvider = <span class="s">"rowsFromExcel"</span>)
+<span class="k">public void</span> isPalindromeFromRow(
+        Map&lt;String,String&gt; row) {
+    ...
+}</code></pre>
+  </div>
+</div>
+
+<p>Notice the only real difference. Shape A builds a <code>[rows][2]</code> array and
+the test takes two typed parameters. Shape B builds a <code>[rows][1]</code> array
+holding the map itself, and the test takes one.</p>
+
+<pre><code>mvn test -Dtest=ExcelDataProviderTest</code></pre>
+
+<pre><code><span class="hl">Tests run: 14</span>, Failures: 0, Errors: 0, Skipped: 0</code></pre>
+
+<p>Seven rows, two test methods, fourteen results. Neither test method mentions a
+single word of test data.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>Which shape to use</caption>
+  <tr><th></th><th>A, typed arguments</th><th>B, a Map</th></tr>
+  <tr><td>Test reads as</td><td><code>(String word, boolean expected)</code>, obvious</td><td><code>(Map row)</code>, you dig inside</td></tr>
+  <tr><td>Types</td><td>converted once, in the provider</td><td>everything is a String until you convert it</td></tr>
+  <tr><td>Add a column</td><td>touch the provider and the signature</td><td>touch nothing</td></tr>
+  <tr><td>Wrong column name</td><td>fails in one place, loudly</td><td><code>null</code> leaks into the test</td></tr>
+</table>
+</div>
+
+<p>Use A. Typed parameters are the reason the report says
+<code>isPalindrome[hello, true](2)</code> instead of a map's <code>toString</code>, and
+a provider is a good place to do conversion once. Reach for B when a sheet has fifteen
+columns and the test needs nine of them.</p>
+
+<h2>Four Excel gotchas</h2>
+
+<p>These are the ones that cost an afternoon. All four were reproduced on your machine
+while writing this lesson.</p>
+
+<h3>1. Numbers come back as doubles</h3>
+
+<p>That <code>12321</code> row exists to show this. POI stores numeric cells as
+<code>double</code>:</p>
+
+<pre><code>RAW  cell.toString()   -> <span class="hl">12321.0</span>
+FMT  formatCellValue   -> <span class="hl">12321</span></code></pre>
+
+<p>Imagine that cell is the password <code>123557</code> in your
+<code>Apache.xlsx</code>. Read it the raw way and you type <code>123557.0</code> into
+the login box, the test fails, and you go hunting through Selenium for a bug that is
+not there. <code>DataFormatter.formatCellValue()</code> returns what Excel
+<em>displays</em>, which is what you want in almost every case. Your
+<code>DataTable</code> already uses it.</p>
+
+<h3>2. A blank row in the middle silently truncates the data</h3>
+
+<p>This one was a live bug in your <code>DataTable.java</code>, and I fixed it while
+writing this lesson. The old loop bound was
+<code>i &lt; sheet.getPhysicalNumberOfRows()</code>.</p>
+
+<pre><code><span class="c">sheet has 3 data rows with one blank line among them</span>
+before: readAsTable returned <span class="hl">2</span>   <span class="c">racecar silently lost</span>
+after:  readAsTable returned <span class="hl">3</span></code></pre>
+
+<p><code>getPhysicalNumberOfRows()</code> counts rows that exist.
+<code>getLastRowNum()</code> is the index of the final one. With a gap the count is
+smaller than the index, so the loop stops early and takes your last rows with it. The
+fix is one line:</p>
+
+<pre><code><span class="c">// was</span>
+<span class="k">for</span> (<span class="k">int</span> i = 1; i &lt; sheet.getPhysicalNumberOfRows(); i++)
+
+<span class="c">// now</span>
+<span class="k">for</span> (<span class="k">int</span> i = 1; i &lt;= sheet.getLastRowNum(); i++)</code></pre>
+
+<p>Note the <code>&lt;=</code>. <code>getLastRowNum()</code> is an index, not a count.
+The existing <code>if (row == null) continue;</code> handles the gap itself.</p>
+
+<div class="warn">
+  <span class="lbl">Worth saying out loud in an interview</span>
+  <p>"A blank row in the middle of the sheet used to drop everything after it, because
+  the loop used the physical row count instead of the last row index." That is a
+  specific bug with a specific cause, and it is far more convincing than reciting that
+  POI has a <code>Workbook</code> class.</p>
+</div>
+
+<h3>3. Relative paths depend on where you launched from</h3>
+
+<p><code>"testdata/palindrome-data.xlsx"</code> resolves against the process working
+directory. Maven runs from the project root, so it works. An IDE run configuration may
+not, and a module inside a multi-module build definitely will not. When it breaks, the
+file is fine and the path is wrong. Print
+<code>System.getProperty("user.dir")</code> before you doubt anything else.</p>
+
+<h3>4. .xls and .xlsx are different formats</h3>
+
+<p><code>XSSFWorkbook</code> reads <code>.xlsx</code>. The older
+<code>.xls</code> needs <code>HSSFWorkbook</code>. Hand the wrong one an
+<code>.xls</code> and you get an exception about an invalid header signature.
+<code>WorkbookFactory.create(file)</code> picks the right one by sniffing the file, and
+is the better default in a framework you hand to other people.</p>
+
+<h2>@DataProvider vs @Parameters</h2>
+
+<p>Both feed values into tests, and interviewers like asking for the difference because
+the answer shows whether you have used either.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>Two different jobs</caption>
+  <tr><th></th><th><code>@DataProvider</code></th><th><code>@Parameters</code></th></tr>
+  <tr><td>Source</td><td>a Java method, so a sheet, a database, an API, anything</td><td><code>&lt;parameter&gt;</code> in <code>testng.xml</code></td></tr>
+  <tr><td>How many values</td><td>many rows</td><td>one value per run</td></tr>
+  <tr><td>Test runs</td><td>once per row</td><td>once</td></tr>
+  <tr><td>Types</td><td>any object</td><td>strings from XML, converted to primitives</td></tr>
+  <tr><td>Use it for</td><td>test data. Ten logins, forty search terms</td><td>configuration. Which browser, which environment URL</td></tr>
+</table>
+</div>
+
+<p>The one-sentence version: <code>@Parameters</code> configures the run,
+<code>@DataProvider</code> feeds the run. A real suite uses both at once, with
+<code>@Parameters("browser")</code> from the XML deciding Chrome or Firefox while a
+provider pushes forty rows of data through whichever one started.</p>
+
+<h3>Three extras worth knowing they exist</h3>
+
+<p><code>@DataProvider(parallel = true)</code> runs the rows in parallel threads. Fast,
+and a good way to discover your tests were sharing state.</p>
+
+<p>Return <code>Iterator&lt;Object[]&gt;</code> instead of <code>Object[][]</code> when
+the data set is large. TestNG pulls rows one at a time rather than building the whole
+array up front.</p>
+
+<p>A provider can declare a <code>java.lang.reflect.Method</code> parameter. TestNG
+passes the test method that is about to run, so one provider can return different rows
+depending on who is asking.</p>
+
+<h2>Check yourself</h2>
+
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="3"
+  data-ok="One result per row. The outer array length decides how many times the method runs."
+  data-no="The method is written once but runs once per row. Six inner arrays means six runs, and six separate pass or fail results in the report.">
+  <p class="q">A provider returns an <code>Object[][]</code> with six inner arrays. One
+  <code>@Test</code> method uses it. How many results appear in the report?</p>
+  <button class="opt">One, there is one test method</button>
+  <button class="opt">Two, the method plus the provider</button>
+  <button class="opt">Six, one per inner array</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="POI holds numeric cells as doubles, so the raw value reads back as 123557.0. DataFormatter returns the text Excel displays."
+  data-no="The cell is numeric, and POI stores numeric cells as doubles. Read raw, it comes back 123557.0, which is not the password anyone typed. DataFormatter.formatCellValue gives you 123557.">
+  <p class="q">Your sheet holds the password <code>123557</code>. You read the cell
+  without a <code>DataFormatter</code>. What does the test send to the login box?</p>
+  <button class="opt">123557.0</button>
+  <button class="opt">123557 exactly as typed</button>
+  <button class="opt">An empty string, numbers are not text</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="A loop throws on the first bad row, so everything after it is never checked, and the report shows a single failed test."
+  data-no="The problem is not speed or syntax. A failed assertion throws, so the loop stops dead at the first bad row and the rows after it are never checked at all.">
+  <p class="q">Why is a <code>for</code> loop over test data inside one
+  <code>@Test</code> worse than a provider?</p>
+  <button class="opt">It runs more slowly than TestNG's own loop</button>
+  <button class="opt">The first failure stops the remaining rows</button>
+  <button class="opt">TestNG refuses to run loops inside a test</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="@Parameters carries one configuration value from testng.xml. Row-by-row test data is a provider's job."
+  data-no="@Parameters reads a single value out of testng.xml, so it can carry which browser to use, but not forty rows of data. That is what a @DataProvider is for.">
+  <p class="q">You need the suite to run against Chrome or Firefox depending on the
+  XML, and to push forty rows of search terms through it. Which does what?</p>
+  <button class="opt">@DataProvider for both, it is more capable</button>
+  <button class="opt">@Parameters for both, it reads the XML</button>
+  <button class="opt">@Parameters for the browser, @DataProvider for the rows</button>
+</div>
+
+<h2>Before the next lesson</h2>
+
+<p>Do this one on your own file, <code>Apache.xlsx</code>, the credentials sheet with
+<code>Username</code> and <code>Password</code> columns.</p>
+
+<ul>
+  <li>write a <code>@DataProvider</code> that reads it with
+  <code>DataTable.readAsTable("Apache.xlsx")</code> and returns
+  <code>[username, password]</code> pairs</li>
+  <li>write one <code>@Test</code> taking two <code>String</code> parameters that
+  asserts neither is blank and the password is at least six characters</li>
+  <li>run it and confirm <code>Tests run: 2</code>, one per credential row</li>
+  <li>find the row names in the failure output by breaking the rule on purpose, say by
+  demanding twenty characters</li>
+</ul>
+
+<p>That last step matters more than it looks. When you describe your framework in an
+interview, "the report names the failing row" is the sentence that shows you have read
+your own output.</p>
+
+<p>Lesson 5 is controlling execution: <code>priority</code>,
+<code>dependsOnMethods</code>, <code>timeOut</code>, <code>expectedExceptions</code>
+and <code>enabled</code>. Short lesson, heavy on interview questions.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Read <a href="https://testng.org/index.html#_parameters_dataproviders">Parameters
+  with DataProviders</a> in the official documentation, and the
+  <a href="https://poi.apache.org/components/spreadsheet/quick-guide.html">POI
+  spreadsheet quick guide</a> if you want the cell-type detail.</p>
+
+  <h3>Files this lesson touched</h3>
+  <p><code>testdata/palindrome-data.xlsx</code> (new),
+  <code>DataProviderBasicsTest.java</code> (new),
+  <code>ExcelDataProviderTest.java</code> (new),
+  <code>excel/DataTable.java</code> (the blank-row fix).</p>
+
+  <h3>Stuck on anything?</h3>
+  <p>Ask me. The one worth asking: "how do I stop a provider re-reading the sheet for
+  every test method?" It leads into caching and into why providers are static in most
+  real frameworks.</p>
+
+  <p class="nav">
+    <a href="0003-testng-xml-and-the-test-tag.html">&larr; Lesson 3</a>
+    Mission
+    <a href="0005-controlling-execution.html">Lesson 5 &rarr; controlling execution</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0003-testng-xml-and-the-test-tag.html">&larr; Lesson 3</a><a href="../../index.html#testng">All lessons</a><a href="0005-controlling-execution.html">Lesson 5 &rarr;</a></p>
+</main>
+</body>
+</html>

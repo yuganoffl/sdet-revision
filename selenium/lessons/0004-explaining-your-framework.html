@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 · Explaining your framework</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0003-oop-in-your-framework.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0005-exception-handling.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 04 &middot; Selenium</p>
+<h1>Explaining your framework</h1>
+<p class="standfirst">Two questions, one structure. "Tell me about your framework" and
+"how would you build one from scratch" are the same six layers, told forwards or
+backwards. Learn the layers and you can answer either, plus every follow-up they hang off
+them.</p>
+
+<div class="warn">
+  <span class="lbl">Read this first. It decides everything else on the page.</span>
+  <p>You have not built a Selenium framework yet. You start on Monday. What you
+  <em>have</em> built is the TestNG layer in this repo, and that is real, and it is
+  yours.</p>
+  <p>So do not open with "in my framework". Open with what is true. A borrowed story
+  survives one question and collapses on the second, because the follow-ups are always
+  "why did you choose that" and "what went wrong with it". You cannot invent those.</p>
+  <p>The honest version is not the weak version. Read the script below before you decide
+  it costs you anything.</p>
+</div>
+
+<hr>
+
+<h2 id="layers">The six layers</h2>
+
+<p>Every Selenium framework worth the name is these six, whatever the company calls them.
+Learn them in order. They are the spine of both answers, the map of the repo, and the
+list of follow-up questions.</p>
+
+<table>
+  <thead><tr><th>#</th><th>Layer</th><th>Its one job</th><th>Key piece</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Configuration</td><td>No value is hard-coded</td><td>layered properties, <code>-D</code> wins</td></tr>
+    <tr><td>2</td><td>Driver</td><td>Make a browser, safely, in parallel</td><td><code>DriverFactory</code> + <code>ThreadLocal</code></td></tr>
+    <tr><td>3</td><td>Pages</td><td>Hide the DOM from the tests</td><td>page objects, <code>BasePage</code></td></tr>
+    <tr><td>4</td><td>Data</td><td>Test data lives outside the code</td><td>Excel via POI, <code>@DataProvider</code></td></tr>
+    <tr><td>5</td><td>Tests</td><td>Read like the user's journey</td><td>TestNG, <code>BaseTest</code>, groups</td></tr>
+    <tr><td>6</td><td>Reporting</td><td>Diagnose a failure without rerunning</td><td>listeners, screenshots, retry, Allure</td></tr>
+  </tbody>
+</table>
+
+<p>Layers 1 and 2 are setup. Layer 3 is where the design taste shows. Layer 6 is what
+separates a framework from a folder of tests.</p>
+
+<h3>The one rule that ties them together</h3>
+
+<div class="win">
+  <span class="lbl">Say this sentence and stop talking for a second</span>
+  <p>"Nothing in my <code>tests</code> package imports Selenium. No <code>By</code>, no
+  <code>WebElement</code>, no <code>WebDriver</code>. If a test needs one, my page object
+  is missing a method."</p>
+  <p>It is short, it is checkable, and most candidates cannot say it about their own
+  repo. Selenium's own guidance agrees: page objects "should seldom expose the underlying
+  WebDriver instance".</p>
+</div>
+
+<hr>
+
+<h2 id="script">The 90 second script, honest version</h2>
+
+<p>Four beats. Do not memorise the words, memorise the four beats and the one number in
+each.</p>
+
+<div class="note">
+  <span class="lbl">Beat 1 &mdash; where you actually are (about 15 seconds)</span>
+  <p>"I have built the TestNG side of a framework in my own practice repo, and I am
+  building the Selenium layer on top of it now. So let me tell you what is running today,
+  and then how I am putting the rest together."</p>
+  <p>That is one sentence and it buys you the whole rest of the answer. You are now
+  describing, not claiming.</p>
+</div>
+
+<div class="note">
+  <span class="lbl">Beat 2 &mdash; what is running today (about 30 seconds)</span>
+  <p>"TestNG driving it, with suite XMLs for selection. Tests tagged into groups so the
+  pre-merge run is the smoke slice and the nightly is everything. Data comes out of Excel
+  through Apache POI into a <code>@DataProvider</code> &mdash; I wrote that reader, and I
+  found a bug in it where a blank row in the middle of a sheet silently dropped every row
+  after it, because it used <code>getPhysicalNumberOfRows</code> instead of
+  <code>getLastRowNum</code>. Parallel execution with a <code>ThreadLocal</code>, and a
+  listener layer with a retry analyser."</p>
+  <p>All of that is true and all of it is yours. The POI bug is the strongest thing in
+  the answer, because nobody invents a debugging story that specific.</p>
+</div>
+
+<div class="note">
+  <span class="lbl">Beat 3 &mdash; the Selenium design (about 30 seconds)</span>
+  <p>"The Selenium layer is a driver factory returning Chrome, Firefox or Edge behind the
+  <code>WebDriver</code> interface, held in a <code>ThreadLocal</code> so a parallel run
+  cannot cross the streams. Page objects with plain <code>By</code> constants and explicit
+  waits, not <code>PageFactory</code>. Explicit waits everywhere and the implicit wait
+  left at zero, because mixing them makes the timeout unpredictable &mdash; I measured
+  that: a four second implicit wait plus a six second explicit wait timed out at eight and
+  a half seconds."</p>
+  <p>That measurement is your credibility. It is a number from your own machine.</p>
+</div>
+
+<div class="note">
+  <span class="lbl">Beat 4 &mdash; failures (about 15 seconds)</span>
+  <p>"On failure the listener takes a screenshot and logs the URL, the browser and the
+  data row, so I can diagnose without rerunning. Retry is deliberate and visible rather
+  than silent &mdash; and one thing I learned there is that a retried attempt fires
+  <code>onTestSkipped</code>, not <code>onTestFailure</code>, so a naive
+  screenshot-on-failure listener captures nothing for the attempts you most want to
+  see."</p>
+</div>
+
+<p>Then stop. Do not keep talking. The follow-up question is where you win, and you have
+just laid out four of them.</p>
+
+<hr>
+
+<h2 id="from-scratch">"How would you build one from scratch?"</h2>
+
+<p>Same six layers, in build order, with the reason attached to each. The reason is the
+answer; the step is just the peg it hangs on.</p>
+
+<ol>
+  <li><strong>Skeleton and one smoke test.</strong> Maven, pinned versions in one
+  properties block, one test that opens a browser and asserts a title. Why first: it
+  proves the setup on a clean machine before any design decisions can hide a broken
+  build.</li>
+
+  <li><strong>Config.</strong> Layered. A checked-in default, an environment file, then
+  <code>-D</code> on the command line beating both. Why early: every layer after this
+  wants a URL, a browser and a timeout, and if you do not build it now you will scatter
+  <code>System.getProperty</code> through the whole codebase. No secrets in the repo,
+  ever.</li>
+
+  <li><strong>Driver factory and driver manager.</strong> A browser enum, per-browser
+  options, and a <code>ThreadLocal&lt;WebDriver&gt;</code> behind a private field. Why
+  here: parallel safety is impossible to retrofit. Bolt it on later and you rewrite every
+  page object.</li>
+
+  <li><strong>Page objects.</strong> A <code>BasePage</code> owning the driver and every
+  wait, then one page object per page, plus components for the header and modals that
+  appear everywhere. Enforce the no-Selenium-in-tests rule from the first page object, not
+  from the fiftieth.</li>
+
+  <li><strong>Data layer.</strong> POI wrapped so tests never touch a POI type, rows
+  mapped to objects, wired into <code>@DataProvider</code>. Why wrapped: the day you move
+  from Excel to CSV or a database, one class changes.</li>
+
+  <li><strong>Listeners and reporting.</strong> <code>ITestListener</code> for logging and
+  screenshot-on-failure, <code>IRetryAnalyzer</code> for deliberate retries, and a real
+  report with the screenshot attached. Why last: it is the layer that needs all the others
+  to exist, and it is the one that makes the suite usable by somebody who is not you.</li>
+
+  <li><strong>Then CI.</strong> Runs on every push, publishes the report as an artifact, a
+  matrix across browsers.</li>
+</ol>
+
+<div class="win">
+  <span class="lbl">The sentence that makes this answer sound senior</span>
+  <p>"My test for whether it is done is: a new engineer clones it, runs one command, and
+  is productive by Wednesday. If they need a wiki page of setup steps, I have not finished
+  it."</p>
+  <p>That reframes the question from "which tools" to "who has to live with this", which
+  is what the interviewer is really probing.</p>
+</div>
+
+<hr>
+
+<h2 id="followups">The follow-ups, and one line each</h2>
+
+<table>
+  <thead><tr><th>They ask</th><th>You say</th></tr></thead>
+  <tbody>
+    <tr><td>Why <code>ThreadLocal</code>?</td><td>Two threads share one instance, so they share a plain field and one overwrites the other. <code>ThreadLocal</code> gives each thread its own driver.</td></tr>
+    <tr><td>Why not <code>PageFactory</code>?</td><td>Selenium's own page object guidance never mentions it, and its lazy proxies compose badly with explicit waits. Plain <code>By</code> constants are clearer.</td></tr>
+    <tr><td>How do you handle waits?</td><td>Explicit everywhere, implicit left at zero. Mixing them makes the timeout the explicit one plus up to one implicit wait.</td></tr>
+    <tr><td>How do you do cross-browser?</td><td>A factory returning three drivers behind the <code>WebDriver</code> interface. One config value changes; no test or page object knows.</td></tr>
+    <tr><td>How do you manage drivers?</td><td>Selenium Manager. Built in since 4.6, so no WebDriverManager and no <code>System.setProperty</code>.</td></tr>
+    <tr><td>How do you handle flaky tests?</td><td>Find the real cause first, usually a wait. <code>IRetryAnalyzer</code> for genuinely non-deterministic ones, and the retry is visible in the report, never silent.</td></tr>
+    <tr><td>Which reporting tool?</td><td>Allure. ExtentReports was sunset by its own author, and Allure survives a change of test runner.</td></tr>
+    <tr><td>How do you check five things in one test?</td><td><code>SoftAssert</code>, then <code>assertAll()</code>. A hard assert stops at the first failure and hides the other four.</td></tr>
+    <tr><td>How is data separated?</td><td>Excel through POI, wrapped so tests never see a POI type, into a <code>@DataProvider</code>. A non-programmer can add a row.</td></tr>
+    <tr><td>What is <code>StaleElementReference</code>?</td><td>You found the element, then the page replaced it. The handle points at a node no longer in the DOM. Re-find it; a longer wait does not help.</td></tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <span class="lbl">Three answers that lose you the room</span>
+  <p><strong>"We use <code>Thread.sleep</code> where it's flaky."</strong> Slower and less
+  reliable than waiting properly. This is the single thing interviewers listen for.</p>
+  <p><strong>"We use ExtentReports."</strong> Fine to have used it, but know it was sunset
+  by its own author. Naming it as a current choice dates you.</p>
+  <p><strong>"We use WebDriverManager."</strong> Unnecessary since Selenium 4.6. Same
+  problem: it says you learned from tutorials written in 2019.</p>
+</div>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="3"
+  data-ok="Say what you have actually built. The follow-ups are always why and what went wrong, and those cannot be invented."
+  data-no="A borrowed story survives one question. The second is always why did you choose that, or what went wrong, and there is no way to answer those about work you did not do.">
+  <p class="q">You are asked about your framework and you have built part of one. What do
+  you open with?</p>
+  <button class="opt">Describe the full thing as yours</button>
+  <button class="opt">Say you have not built one yet</button>
+  <button class="opt">Say what runs, then the design</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="Parallel safety cannot be retrofitted. Bolt it on later and every page object that touched the driver has to change."
+  data-no="It is not about speed or tooling. A driver held in a plain field spreads through every page object, so making it thread-safe afterwards means rewriting all of them.">
+  <p class="q">Why build the <code>ThreadLocal</code> driver manager early rather than
+  later?</p>
+  <button class="opt">Retrofitting it rewrites every page object</button>
+  <button class="opt">Because parallel runs are much faster</button>
+  <button class="opt">Because Selenium Manager requires it first</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="A hard assert stops the test at the first failure, so you never see the other four. SoftAssert collects them and assertAll reports the lot."
+  data-no="Splitting into five tests means five browser starts for one journey. SoftAssert collects every failure in one run and assertAll reports them together.">
+  <p class="q">One test needs to check five fields on a confirmation page. How?</p>
+  <button class="opt">Five separate tests, one per field</button>
+  <button class="opt">SoftAssert, then call assertAll</button>
+  <button class="opt">Five asserts, and read the first</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="The element was found, then the page replaced that node. The handle is stale, so you re-find it rather than wait longer."
+  data-no="Waiting longer does not help, because the wait already succeeded once. The DOM node your handle points at has been replaced, so the fix is to find it again.">
+  <p class="q">A test throws <code>StaleElementReferenceException</code>. What
+  happened?</p>
+  <button class="opt">The element never appeared on the page</button>
+  <button class="opt">The wait timed out before it loaded</button>
+  <button class="opt">The page replaced it after you found it</button>
+</div>
+
+<hr>
+
+<h2>Tonight</h2>
+
+<ol>
+  <li>Say the four beats out loud, timed. Ninety seconds. If you run over, cut beat 3, not
+  beat 2, because beat 2 is the part that is provably yours.</li>
+  <li>Cover the right column of the follow-up table and work down the left. Any you cannot
+  answer in one sentence, ask me now.</li>
+  <li>Reread the two numbers you own: the mixed-wait measurement from
+  <a href="0002-waits.html">lesson 2</a>, and the POI <code>getPhysicalNumberOfRows</code>
+  bug. Those two are what make the rest sound like experience rather than reading.</li>
+</ol>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Selenium's <a href="https://www.selenium.dev/documentation/test_practices/encouraged/page_object_models/">Page
+  object models</a> is the one to have read, and it is short. It is where the
+  "seldom expose the underlying WebDriver instance" rule comes from, and where page
+  methods returning page objects is recommended.</p>
+
+  <h3>Where the design comes from</h3>
+  <p>FRAMEWORK-BRIEF.md, the spec for the framework you
+  start building on Monday. Every design claim in this lesson is from there, so the answers
+  you give tomorrow are the thing you will actually build.</p>
+
+  <h3>Stuck?</h3>
+  <p>Ask me tonight, and nothing is too small. Worth asking: "what if they ask how many
+  tests are in my suite?" There is an honest answer to that one and it is better than a
+  number you have to defend.</p>
+
+  <p class="nav">
+    <a href="0003-oop-in-your-framework.html">&larr; Lesson 3</a>
+    Framework brief
+    <a href="0005-exception-handling.html">Lesson 5 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0003-oop-in-your-framework.html">&larr; Lesson 3</a><a href="../../index.html#selenium">All lessons</a><a href="0005-exception-handling.html">Lesson 5 &rarr;</a></p>
+</main>
+</body>
+</html>

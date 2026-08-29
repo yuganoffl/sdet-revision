@@ -1,0 +1,1099 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arrays &middot; Java</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="easystrings.html">&larr;</a><a class="tb-home" href="../../index.html#java">Java</a><a class="tb-next" href="medium.html">&rarr;</a></div>
+<main class="sheet">
+<p class="eyebrow">Java &middot; 14 programs</p>
+<h1>Arrays</h1>
+<p class="standfirst">Largest, smallest, duplicates, sorting, moving zeroes. Tap a program to open its code.
+Every one of these is your own, written with plain loops.</p>
+<p class="chips"><a href="#bubblesort">Bubble sort</a><a href="#countarrayelement">Count array element</a><a href="#filtererrorlogs">Filter error logs</a><a href="#findduplicatestrings">Find duplicate strings</a><a href="#findthemissingnumber">Find the missing number</a><a href="#largestnumber">Largest number</a><a href="#movezeroestoleft">Move zeroes to left</a><a href="#movezeroestoright">Move zeroes to right</a><a href="#removeduplicatesfromarray">Remove duplicates from array</a><a href="#secondlargestnumber">Second largest number</a><a href="#secondsmallestnumber">Second smallest number</a><a href="#smallestnumber">Smallest number</a><a href="#sortanarray">Sort an array</a><a href="#swapprogram">Swap program</a></p>
+<p class="chips-actions"><button type="button" id="openall">Open all</button>
+<button type="button" id="shutall">Close all</button></p>
+<details id="bubblesort" class="prog"><summary><b>Bubble sort</b><span>Sort an array in ascending order using Bubble Sort.</span></summary><p class="filename">BubbleSort.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Sort an array in ascending order using Bubble Sort.
+ *
+ * Example:
+ *   Input:  [4, 3, 4, 4, 5, 9, 7, 8]
+ *   Output: [3, 4, 4, 4, 5, 7, 8, 9]
+ *
+ * How it works: repeatedly walk through the array comparing ADJACENT
+ * pairs and swap them if they are out of order. After each full pass the
+ * largest unsorted value has &quot;bubbled up&quot; to its final position at the
+ * end — like air bubbles rising in water. After pass i, the last i
+ * elements are already in their final places, which is why the inner
+ * loop shrinks by one each pass.
+ */
+public class BubbleSort {
+
+    /**
+     * Approach 1: Standard bubble sort.
+     *
+     * Outer loop = passes. After pass i, the last i elements are final,
+     * so the inner loop only needs to reach length - 1 - i.
+     */
+    public static void basic(int[] nums) {
+        for (int i = 0; i &lt; nums.length - 1; i++) {
+            for (int j = 0; j &lt; nums.length - 1 - i; j++) {
+                if (nums[j] &gt; nums[j + 1]) {
+                    // Adjacent pair out of order -&gt; swap them.
+                    int temp = nums[j];
+                    nums[j] = nums[j + 1];
+                    nums[j + 1] = temp;
+                }
+            }
+        }
+    }
+
+    /**
+     * Approach 2: Early-exit version.
+     *
+     * Idea: if a whole pass makes ZERO swaps, nothing is out of order,
+     * so the array is already sorted and we can stop early. Great for
+     * nearly-sorted input.
+     */
+    public static void withEarlyExit(int[] nums) {
+        for (int i = 0; i &lt; nums.length - 1; i++) {
+            boolean swapped = false;
+
+            for (int j = 0; j &lt; nums.length - 1 - i; j++) {
+                if (nums[j] &gt; nums[j + 1]) {
+                    int temp = nums[j];
+                    nums[j] = nums[j + 1];
+                    nums[j + 1] = temp;
+                    swapped = true;
+                }
+            }
+
+            if (!swapped) {
+                break; // no swaps this pass -&gt; already sorted
+            }
+        }
+    }
+
+    /**
+     * Descending order: the SAME algorithm with one character flipped.
+     *
+     * Idea: the comparison &quot;nums[j] &gt; nums[j + 1]&quot; decides which value
+     * bubbles to the end. Flip it to &quot;&lt;&quot; and the SMALLEST value bubbles
+     * to the end each pass instead — giving biggest-first order. Early
+     * exit included, just like Approach 2.
+     */
+    public static void descending(int[] nums) {
+        for (int i = 0; i &lt; nums.length - 1; i++) {
+            boolean swapped = false;
+
+            for (int j = 0; j &lt; nums.length - 1 - i; j++) {
+                if (nums[j] &lt; nums[j + 1]) { // the only change vs ascending
+                    int temp = nums[j];
+                    nums[j] = nums[j + 1];
+                    nums[j + 1] = temp;
+                    swapped = true;
+                }
+            }
+
+            if (!swapped) {
+                break;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 4, 3, 4, 4, 5, 9, 7, 8 };
+        System.out.println(&quot;Input:      &quot; + Arrays.toString(input));
+
+        int[] a = input.clone();
+        basic(a);
+        System.out.println(&quot;Basic:      &quot; + Arrays.toString(a));
+
+        int[] b = input.clone();
+        withEarlyExit(b);
+        System.out.println(&quot;Early exit: &quot; + Arrays.toString(b));
+
+        int[] c = input.clone();
+        descending(c);
+        System.out.println(&quot;Descending: &quot; + Arrays.toString(c));
+    }
+}</code></pre></details><details id="countarrayelement" class="prog"><summary><b>Count array element</b><span>Count how many times each element occurs in an array (frequency count).</span></summary><p class="filename">CountArrayElement.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Problem: Count how many times each element occurs in an array
+ * (frequency count).
+ *
+ * Example:
+ *   Input:  [1, 2, 2, 3, 4, 4, 4]
+ *   Output: 1 -&gt; 1, 2 -&gt; 2, 3 -&gt; 1, 4 -&gt; 3
+ *
+ * Java 8 one-liner worth knowing:
+ *   Arrays.stream(nums).boxed()
+ *         .collect(Collectors.groupingBy(n -&gt; n, Collectors.counting()));
+ */
+public class CountArrayElement {
+
+    /**
+     * Approach 1: Nested loops with a visited array.
+     *
+     * Idea: for every element, count its matches by scanning forward.
+     * Mark matches as &quot;visited&quot; so we never count the same value twice.
+     * It checks every pair, so it does more work than the HashMap version.
+     */
+    public static void usingBruteForce(int[] nums) {
+        boolean[] visited = new boolean[nums.length];
+
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (visited[i]) {
+                continue; // already counted as part of an earlier group
+            }
+
+            int count = 1; // the element itself
+            for (int j = i + 1; j &lt; nums.length; j++) {
+                if (nums[i] == nums[j]) {
+                    count++;
+                    visited[j] = true; // don&#x27;t recount this position later
+                }
+            }
+
+            System.out.println(nums[i] + &quot; -&gt; &quot; + count);
+        }
+    }
+
+    /**
+     * Approach 2: HashMap frequency count (the practical answer).
+     *
+     * Idea: the map key is the array value, the map value is its count.
+     * One pass and you are done. LinkedHashMap (instead of plain HashMap)
+     * keeps first-seen order, which makes the output predictable — a nice
+     * detail to mention.
+     */
+    public static void usingHashMap(int[] nums) {
+        Map&lt;Integer, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+
+        for (int num : nums) {
+            // getOrDefault returns 0 the first time we see a value.
+            frequency.put(num, frequency.getOrDefault(num, 0) + 1);
+        }
+
+        for (Map.Entry&lt;Integer, Integer&gt; entry : frequency.entrySet()) {
+            System.out.println(entry.getKey() + &quot; -&gt; &quot; + entry.getValue());
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 2, 2, 3, 4, 4, 4 };
+
+        System.out.println(&quot;Nested loops:&quot;);
+        usingBruteForce(input);
+
+        System.out.println(&quot;HashMap:&quot;);
+        usingHashMap(input);
+    }
+}</code></pre></details><details id="filtererrorlogs" class="prog"><summary><b>Filter error logs</b><span>Clean up an array of log entries — remove duplicates AND drop every entry that contains &quot;ERROR&quot;. Keep the remaining entries in their original order.</span></summary><p class="filename">FilterErrorLogs.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Problem: Clean up an array of log entries — remove duplicates AND drop
+ * every entry that contains &quot;ERROR&quot;. Keep the remaining entries in
+ * their original order.
+ *
+ * Example:
+ *   Input:  [&quot;S1:Active&quot;, &quot;S2:Pending&quot;, &quot;S1:Active&quot;, &quot;S3:Active&quot;,
+ *            &quot;S1:Terminated&quot;, &quot;S4:ERROR&quot;, &quot;S2:Active&quot;]
+ *   Output: [&quot;S1:Active&quot;, &quot;S2:Pending&quot;, &quot;S3:Active&quot;, &quot;S1:Terminated&quot;,
+ *            &quot;S2:Active&quot;]
+ *
+ * A very SDET-flavored task: log/report cleanup before asserting on
+ * results.
+ */
+public class FilterErrorLogs {
+
+    /**
+     * Approach 1: LinkedHashSet with a filter guard.
+     *
+     * Idea: two jobs in one loop — the if skips ERROR entries (the
+     * filter job), and the LinkedHashSet ignores repeat additions while
+     * remembering first-seen order (the dedupe job).
+     */
+    public static Set&lt;String&gt; usingLinkedHashSet(String[] logs) {
+        Set&lt;String&gt; cleaned = new LinkedHashSet&lt;&gt;();
+
+        for (String log : logs) {
+            if (!log.contains(&quot;ERROR&quot;)) { // filter: only non-error entries pass
+                cleaned.add(log);         // dedupe: repeats are ignored by the Set
+            }
+        }
+
+        return cleaned;
+    }
+
+    /**
+     * Approach 2: Java 8 Streams pipeline.
+     *
+     * Idea: the same two jobs read almost like English —
+     *   filter(log -&gt; !log.contains(&quot;ERROR&quot;))  keeps only non-errors
+     *   distinct()                               drops repeats
+     *   collect(Collectors.toList())             gathers what survived
+     */
+    public static List&lt;String&gt; usingStreams(String[] logs) {
+        return Arrays.stream(logs)
+                .filter(log -&gt; !log.contains(&quot;ERROR&quot;))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    public static void main(String[] args) {
+        String[] logs = {
+                &quot;S1:Active&quot;, &quot;S2:Pending&quot;, &quot;S1:Active&quot;, &quot;S3:Active&quot;,
+                &quot;S1:Terminated&quot;, &quot;S4:ERROR&quot;, &quot;S2:Active&quot;
+        };
+
+        System.out.println(&quot;LinkedHashSet: &quot; + usingLinkedHashSet(logs));
+        System.out.println(&quot;Streams:       &quot; + usingStreams(logs));
+    }
+}</code></pre></details><details id="findduplicatestrings" class="prog"><summary><b>Find duplicate strings</b><span>Given an array of strings (e.g., transaction IDs), find the values that appear more than once — a very common SDET scenario, like spotting duplicate transactions in a...</span></summary><p class="filename">FindDuplicateStrings.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Problem: Given an array of strings (e.g., transaction IDs), find the
+ * values that appear more than once — a very common SDET scenario, like
+ * spotting duplicate transactions in a payment report.
+ *
+ * Example:
+ *   Input:  [&quot;TXN1&quot;, &quot;TXN2&quot;, &quot;TXN1&quot;, &quot;TXN3&quot;, &quot;TXN2&quot;, &quot;TXN1&quot;]
+ *   Output: duplicates -&gt; [&quot;TXN1&quot;, &quot;TXN2&quot;]
+ *           positions  -&gt; TXN1 at [0, 2, 5], TXN2 at [1, 4]
+ */
+public class FindDuplicateStrings {
+
+    /**
+     * Approach 1: Nested loops, compare every pair.
+     *
+     * Idea: a value is a duplicate if it shows up at two different
+     * indexes, so check each element against everything after it.
+     */
+    public static Set&lt;String&gt; usingBruteForce(String[] items) {
+        Set&lt;String&gt; duplicates = new HashSet&lt;&gt;();
+
+        for (int i = 0; i &lt; items.length; i++) {
+            for (int j = i + 1; j &lt; items.length; j++) {
+                if (items[i].equals(items[j])) {
+                    duplicates.add(items[i]); // seen at i and j -&gt; duplicate
+                    break; // no need to keep scanning for this value
+                }
+            }
+        }
+        return duplicates;
+    }
+
+    /**
+     * Approach 2: HashSet &quot;add returns false&quot; trick (the clean answer for
+     * finding WHICH values repeat).
+     *
+     * Idea: keep a Set of values seen so far. The moment add() returns
+     * false, the value was already there, so it is a duplicate.
+     */
+    public static Set&lt;String&gt; usingHashSet(String[] items) {
+        Set&lt;String&gt; seen = new HashSet&lt;&gt;();
+        Set&lt;String&gt; duplicates = new HashSet&lt;&gt;();
+
+        for (String item : items) {
+            if (!seen.add(item)) {
+                // add() returned false -&gt; item was already in &quot;seen&quot;.
+                duplicates.add(item);
+            }
+        }
+        return duplicates;
+    }
+
+    /**
+     * Approach 3: HashMap of positions (when they also ask WHERE or
+     * HOW OFTEN each value repeats).
+     *
+     * Idea: map each value to the list of indexes where it appears.
+     * Afterwards, any value whose list has more than one entry is a
+     * duplicate, and the list tells you exactly where it showed up.
+     */
+    public static Map&lt;String, List&lt;Integer&gt;&gt; usingHashMap(String[] items) {
+        Map&lt;String, List&lt;Integer&gt;&gt; positions = new HashMap&lt;&gt;();
+
+        for (int i = 0; i &lt; items.length; i++) {
+            // computeIfAbsent creates the list on first sight of the value,
+            // then we append the current index to it.
+            positions.computeIfAbsent(items[i], key -&gt; new ArrayList&lt;&gt;()).add(i);
+        }
+
+        // Keep only the values that actually repeat.
+        positions.entrySet().removeIf(entry -&gt; entry.getValue().size() &lt; 2);
+        return positions;
+    }
+
+    public static void main(String[] args) {
+        String[] txns = { &quot;TXN1&quot;, &quot;TXN2&quot;, &quot;TXN1&quot;, &quot;TXN3&quot;, &quot;TXN2&quot;, &quot;TXN1&quot; };
+
+        System.out.println(&quot;Nested loops: &quot; + usingBruteForce(txns));
+        System.out.println(&quot;HashSet:      &quot; + usingHashSet(txns));
+        System.out.println(&quot;HashMap:      &quot; + usingHashMap(txns));
+    }
+}</code></pre></details><details id="findthemissingnumber" class="prog"><summary><b>Find the missing number</b><span>An array contains the numbers 1 to n with exactly one number missing. Find the missing number.</span></summary><p class="filename">FindTheMissingNumber.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+/**
+ * Problem: An array contains the numbers 1 to n with exactly one number
+ * missing. Find the missing number.
+ *
+ * Example:
+ *   Input:  [1, 2, 4, 5, 6]   (numbers are from 1..6)
+ *   Output: 3
+ */
+public class FindTheMissingNumber {
+
+    /**
+     * Approach 1: Sum formula.
+     * Warning: n * (n + 1) overflows int when n gets large.
+     *
+     * Idea: the sum of 1..n is known math: n * (n + 1) / 2. Whatever is
+     * missing is exactly the gap between that expected sum and the actual
+     * sum of the array.
+     */
+    public static int usingSumFormula(int[] nums) {
+        int n = nums.length + 1; // one number is missing, so range is 1..length+1
+
+        int expectedSum = n * (n + 1) / 2; // Gauss formula for 1 + 2 + ... + n
+
+        int actualSum = 0;
+        for (int num : nums) {
+            actualSum += num;
+        }
+
+        return expectedSum - actualSum; // the gap IS the missing number
+    }
+
+    /**
+     * Approach 2: XOR (no overflow risk).
+     *
+     * Idea: XOR every number in the range 1..n with every array element.
+     * Numbers present in both cancel out (x ^ x = 0), so only the missing
+     * number survives.
+     */
+    public static int usingXor(int[] nums) {
+        int n = nums.length + 1;
+        int xor = 0;
+
+        // XOR the full range 1..n.
+        for (int i = 1; i &lt;= n; i++) {
+            xor = xor ^ i;
+        }
+
+        // XOR every array element; pairs cancel, the missing one remains.
+        for (int num : nums) {
+            xor = xor ^ num;
+        }
+
+        return xor;
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 2, 4, 5, 6 };
+        System.out.println(&quot;Sum formula: &quot; + usingSumFormula(input));
+        System.out.println(&quot;XOR:         &quot; + usingXor(input));
+    }
+}</code></pre></details><details id="largestnumber" class="prog"><summary><b>Largest number</b><span>Find the largest number in an array.</span></summary><p class="filename">LargestNumber.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Find the largest number in an array.
+ *
+ * Example:
+ *   Input:  [2, 98, 3, 2, 6, 8]
+ *   Output: 98
+ */
+public class LargestNumber {
+
+    /**
+     * Approach 1: Loop with a running champion.
+     *
+     * Idea: keep the biggest value seen so far; every element challenges
+     * it. IMPORTANT detail: initialize the champion to Integer.MIN_VALUE,
+     * not 0. Starting at 0 silently breaks on all-negative arrays like
+     * [-5, -2, -9], because nothing would ever beat 0 and you would
+     * wrongly report 0 as the answer.
+     */
+    public static int usingLoop(int[] nums) {
+        int largest = Integer.MIN_VALUE;
+
+        for (int num : nums) {
+            if (num &gt; largest) {
+                largest = num;
+            }
+        }
+
+        return largest;
+    }
+
+    /**
+     * Approach 2: Sort and take the last element.
+     *
+     * Idea: after sorting in ascending order, the largest value sits in
+     * the final slot. Simple to write; we clone first so the caller&#x27;s
+     * array keeps its original order.
+     */
+    public static int usingSorting(int[] nums) {
+        int[] sorted = nums.clone();
+        Arrays.sort(sorted);
+        return sorted[sorted.length - 1];
+    }
+
+    /**
+     * Approach 3: Java 8 Streams.
+     *
+     * Idea: Arrays.stream(nums) feeds the elements into a stream, and
+     * max() picks the biggest. It returns an OptionalInt (a box that
+     * may be empty for an empty array), which we unwrap with
+     * orElseThrow().
+     */
+    public static int usingStreams(int[] nums) {
+        return Arrays.stream(nums)
+                .max()
+                .orElseThrow();
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 2, 98, 3, 2, 6, 8 };
+
+        System.out.println(&quot;Loop:    &quot; + usingLoop(input));
+        System.out.println(&quot;Sorting: &quot; + usingSorting(input));
+        System.out.println(&quot;Streams: &quot; + usingStreams(input));
+    }
+}</code></pre></details><details id="movezeroestoleft" class="prog"><summary><b>Move zeroes to left</b><span>Move all zeroes in an array to the LEFT end, while keeping the relative order of the non-zero elements.</span></summary><p class="filename">MoveZeroesToLeft.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Move all zeroes in an array to the LEFT end, while keeping the
+ * relative order of the non-zero elements.
+ *
+ * Example:
+ *   Input:  [1, 0, 0, 7, 8]
+ *   Output: [0, 0, 1, 7, 8]
+ */
+public class MoveZeroesToLeft {
+
+    /**
+     * Approach 1: Copy into a new array, filling from the right.
+     *
+     * Idea: same as move-zeroes-right, but we walk the input backwards and
+     * place non-zero values starting from the last slot of the result.
+     */
+    public static int[] usingExtraArray(int[] nums) {
+        int[] result = new int[nums.length]; // all zeroes by default
+        int index = nums.length - 1;         // next free slot, from the right
+
+        for (int i = nums.length - 1; i &gt;= 0; i--) {
+            if (nums[i] != 0) {
+                result[index] = nums[i];
+                index--;
+            }
+        }
+        // The untouched front of result already contains the zeroes.
+        return result;
+    }
+
+    /**
+     * Approach 2: Two pointers, reusing the same array.
+     *
+     * Idea: &quot;insertPos&quot; starts at the last index and marks where the next
+     * non-zero value (found while scanning backwards) should go. Once the
+     * scan finishes, everything from index 0 up to insertPos becomes 0.
+     */
+    public static void usingTwoPointers(int[] nums) {
+        int insertPos = nums.length - 1; // next position for a non-zero value
+
+        // Pass 1: compact all non-zero values to the back (order preserved).
+        for (int i = nums.length - 1; i &gt;= 0; i--) {
+            if (nums[i] != 0) {
+                nums[insertPos] = nums[i];
+                insertPos--;
+            }
+        }
+
+        // Pass 2: fill the remaining front with zeroes.
+        while (insertPos &gt;= 0) {
+            nums[insertPos] = 0;
+            insertPos--;
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 0, 0, 7, 8 };
+        System.out.println(&quot;Input:        &quot; + Arrays.toString(input));
+
+        System.out.println(&quot;Extra array:  &quot; + Arrays.toString(usingExtraArray(input)));
+
+        int[] inPlace = input.clone(); // clone so both demos see the same input
+        usingTwoPointers(inPlace);
+        System.out.println(&quot;Two pointers: &quot; + Arrays.toString(inPlace));
+    }
+}</code></pre></details><details id="movezeroestoright" class="prog"><summary><b>Move zeroes to right</b><span>Move all zeroes in an array to the right end, while keeping the relative order of the non-zero elements.</span></summary><p class="filename">MoveZeroesToRight.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Move all zeroes in an array to the right end, while keeping the
+ * relative order of the non-zero elements.
+ *
+ * Example:
+ *   Input:  [1, 0, 0, 2, 4, 5, 0, 0]
+ *   Output: [1, 2, 4, 5, 0, 0, 0, 0]
+ */
+public class MoveZeroesToRight {
+
+    /**
+     * Approach 1: Copy into a new array (simplest to write).
+     *
+     * Idea: copy every non-zero value into a fresh array, left to right.
+     * A new int[] is already filled with 0s, so the trailing zeroes come
+     * for free.
+     */
+    public static int[] usingExtraArray(int[] nums) {
+        int[] result = new int[nums.length]; // all zeroes by default
+        int index = 0;                       // next free slot in result
+
+        for (int num : nums) {
+            if (num != 0) {
+                result[index] = num;
+                index++;
+            }
+        }
+        // Nothing to fill at the end: result was born zero-filled.
+        return result;
+    }
+
+    /**
+     * Approach 2: Two pointers, reusing the same array.
+     *
+     * Idea: &quot;insertPos&quot; marks where the next non-zero value should go.
+     * Scan left to right; every non-zero value is placed at insertPos and
+     * insertPos moves forward. After the scan, everything from insertPos
+     * to the end becomes 0.
+     */
+    public static void usingTwoPointers(int[] nums) {
+        int insertPos = 0; // next position reserved for a non-zero value
+
+        // Pass 1: compact all non-zero values to the front (order preserved).
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (nums[i] != 0) {
+                nums[insertPos] = nums[i];
+                insertPos++;
+            }
+        }
+
+        // Pass 2: fill the remaining tail with zeroes.
+        while (insertPos &lt; nums.length) {
+            nums[insertPos] = 0;
+            insertPos++;
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 0, 0, 2, 4, 5, 0, 0 };
+        System.out.println(&quot;Input:        &quot; + Arrays.toString(input));
+
+        System.out.println(&quot;Extra array:  &quot; + Arrays.toString(usingExtraArray(input)));
+
+        int[] inPlace = input.clone(); // clone so both demos see the same input
+        usingTwoPointers(inPlace);
+        System.out.println(&quot;Two pointers: &quot; + Arrays.toString(inPlace));
+    }
+}</code></pre></details><details id="removeduplicatesfromarray" class="prog"><summary><b>Remove duplicates from array</b><span>Remove duplicate values from an array so each value appears only once.</span></summary><p class="filename">RemoveDuplicatesFromArray.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/**
+ * Problem: Remove duplicate values from an array so each value appears
+ * only once.
+ *
+ * Example:
+ *   Input:  [1, 3, 3, 4, 4, 7, 7, 7]
+ *   Output: [1, 3, 4, 7]
+ *
+ * Which approach fits depends on the input: use the Set approach for
+ * unsorted input; the two-pointer approach only works on sorted input.
+ */
+public class RemoveDuplicatesFromArray {
+
+    /**
+     * Approach 1: LinkedHashSet (simplest — shows you know Collections).
+     *
+     * Idea: a Set stores each value only once, so adding everything and
+     * reading the set back removes duplicates for free. LinkedHashSet
+     * (not plain HashSet) preserves first-seen order — choose it
+     * deliberately and say why.
+     */
+    public static int[] usingLinkedHashSet(int[] nums) {
+        Set&lt;Integer&gt; unique = new LinkedHashSet&lt;&gt;();
+
+        for (int num : nums) {
+            unique.add(num); // duplicates are ignored by the Set
+        }
+
+        // Convert the set back to an int[] for the caller.
+        int[] result = new int[unique.size()];
+        int i = 0;
+        for (int num : unique) {
+            result[i] = num;
+            i++;
+        }
+        return result;
+    }
+
+    /**
+     * Approach 2: Two pointers, reusing the array — requires SORTED input.
+     *
+     * Idea: in a sorted array, duplicates are always adjacent. &quot;writePos&quot;
+     * tracks where the next NEW value goes; the scan pointer looks for
+     * values different from the previous one.
+     * Returns the new length; elements beyond it are stale leftovers.
+     */
+    public static int usingTwoPointersOnSorted(int[] sortedNums) {
+        if (sortedNums.length == 0) {
+            return 0;
+        }
+
+        int writePos = 1; // slot for the next distinct value (index 0 is kept)
+        for (int scan = 1; scan &lt; sortedNums.length; scan++) {
+            // A value different from the previous one is definitely new
+            // (only valid BECAUSE the array is sorted).
+            if (sortedNums[scan] != sortedNums[scan - 1]) {
+                sortedNums[writePos] = sortedNums[scan];
+                writePos++;
+            }
+        }
+        return writePos; // logical new length
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 3, 3, 4, 4, 7, 7, 7 };
+        System.out.println(&quot;Input:         &quot; + Arrays.toString(input));
+
+        System.out.println(&quot;LinkedHashSet: &quot; + Arrays.toString(usingLinkedHashSet(input)));
+
+        int[] sorted = input.clone();
+        Arrays.sort(sorted);
+        int newLength = usingTwoPointersOnSorted(sorted);
+        // Only the first newLength slots are meaningful after the in-place pass.
+        System.out.println(&quot;Two pointers:  &quot; + Arrays.toString(Arrays.copyOf(sorted, newLength)));
+    }
+}</code></pre></details><details id="secondlargestnumber" class="prog"><summary><b>Second largest number</b><span>Find the second largest DISTINCT number in an array.</span></summary><p class="filename">SecondLargestNumber.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Find the second largest DISTINCT number in an array.
+ *
+ * Examples:
+ *   [1, 4, 7, 8, 2] -&gt; 7
+ *   [8, 8, 7]       -&gt; 7   (duplicates of the max don&#x27;t count)
+ *   [5, 5, 5]       -&gt; no answer (only one distinct value)
+ *
+ * When there is no answer (fewer than 2 elements, or all values equal),
+ * these methods throw IllegalArgumentException; returning -1 is also a
+ * common convention.
+ */
+public class SecondLargestNumber {
+
+    /**
+     * Approach 1: Sort, then walk down from the top (simple to write).
+     *
+     * Idea: after sorting, the largest value sits at the end. Walk
+     * backwards and return the first value strictly smaller than it —
+     * that is the second largest DISTINCT value.
+     * We clone before sorting so the caller&#x27;s array is not mutated.
+     */
+    public static int usingSorting(int[] nums) {
+        if (nums.length &lt; 2) {
+            throw new IllegalArgumentException(&quot;Need at least 2 elements&quot;);
+        }
+
+        int[] sorted = nums.clone();
+        Arrays.sort(sorted);
+
+        int largest = sorted[sorted.length - 1];
+        for (int i = sorted.length - 2; i &gt;= 0; i--) {
+            if (sorted[i] != largest) {
+                return sorted[i]; // first smaller value from the top
+            }
+        }
+
+        throw new IllegalArgumentException(&quot;No distinct second largest exists&quot;);
+    }
+
+    /**
+     * Approach 2: Single pass with two trackers (the neat answer).
+     *
+     * Idea: carry two values through the array:
+     *   largest       — biggest value seen so far
+     *   secondLargest — biggest value seen that is NOT &quot;largest&quot;
+     * When a new max appears, the old max is demoted to secondLargest.
+     */
+    public static int usingSinglePass(int[] nums) {
+        if (nums.length &lt; 2) {
+            throw new IllegalArgumentException(&quot;Need at least 2 elements&quot;);
+        }
+
+        int largest = Integer.MIN_VALUE;
+        int secondLargest = Integer.MIN_VALUE;
+
+        for (int num : nums) {
+            if (num &gt; largest) {
+                secondLargest = largest; // old max becomes the runner-up
+                largest = num;
+            } else if (num &gt; secondLargest &amp;&amp; num != largest) {
+                // Between second and max, and not a duplicate of the max.
+                secondLargest = num;
+            }
+        }
+
+        if (secondLargest == Integer.MIN_VALUE) {
+            throw new IllegalArgumentException(&quot;No distinct second largest exists&quot;);
+        }
+        return secondLargest;
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 4, 7, 8, 2 };
+        System.out.println(&quot;Sorting:     &quot; + usingSorting(input));
+        System.out.println(&quot;Single pass: &quot; + usingSinglePass(input));
+
+        int[] withDuplicates = { 8, 8, 7 };
+        System.out.println(&quot;Duplicates case [8, 8, 7]: &quot; + usingSinglePass(withDuplicates));
+    }
+}</code></pre></details><details id="secondsmallestnumber" class="prog"><summary><b>Second smallest number</b><span>Find the second smallest DISTINCT number in an array.</span></summary><p class="filename">SecondSmallestNumber.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Find the second smallest DISTINCT number in an array.
+ *
+ * Examples:
+ *   [4, 1, 2, 1, 3] -&gt; 2   (duplicates of the minimum don&#x27;t count)
+ *   [7, 7, 7]       -&gt; no answer (only one distinct value)
+ *
+ * Mirror image of SecondLargestNumber — same two patterns, flipped.
+ * When there is no answer (fewer than 2 elements, or all values equal),
+ * these methods throw IllegalArgumentException.
+ */
+public class SecondSmallestNumber {
+
+    /**
+     * Approach 1: Sort, then walk UP from the bottom.
+     *
+     * Idea: after an ascending sort, the smallest value sits at index 0.
+     * Walk forward and return the first value strictly bigger than it —
+     * that is the second smallest DISTINCT value. We clone before
+     * sorting so the caller&#x27;s array is not mutated.
+     */
+    public static int usingSorting(int[] nums) {
+        if (nums.length &lt; 2) {
+            throw new IllegalArgumentException(&quot;Need at least 2 elements&quot;);
+        }
+
+        int[] sorted = nums.clone();
+        Arrays.sort(sorted);
+
+        int smallest = sorted[0];
+        for (int i = 1; i &lt; sorted.length; i++) {
+            if (sorted[i] != smallest) {
+                return sorted[i]; // first bigger value from the bottom
+            }
+        }
+
+        throw new IllegalArgumentException(&quot;No distinct second smallest exists&quot;);
+    }
+
+    /**
+     * Approach 2: Single pass with two trackers.
+     *
+     * Idea: carry two values through the array:
+     *   smallest       — smallest value seen so far
+     *   secondSmallest — smallest value seen that is NOT &quot;smallest&quot;
+     * When a new minimum appears, the old minimum is promoted to
+     * secondSmallest.
+     */
+    public static int usingSinglePass(int[] nums) {
+        if (nums.length &lt; 2) {
+            throw new IllegalArgumentException(&quot;Need at least 2 elements&quot;);
+        }
+
+        int smallest = Integer.MAX_VALUE;
+        int secondSmallest = Integer.MAX_VALUE;
+
+        for (int num : nums) {
+            if (num &lt; smallest) {
+                secondSmallest = smallest; // old minimum becomes the runner-up
+                smallest = num;
+            } else if (num &lt; secondSmallest &amp;&amp; num != smallest) {
+                // Above the minimum, and not a duplicate of it.
+                secondSmallest = num;
+            }
+        }
+
+        if (secondSmallest == Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(&quot;No distinct second smallest exists&quot;);
+        }
+        return secondSmallest;
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 4, 1, 2, 1, 3 };
+        System.out.println(&quot;Sorting:     &quot; + usingSorting(input));
+        System.out.println(&quot;Single pass: &quot; + usingSinglePass(input));
+
+        int[] withDuplicates = { 1, 1, 5 };
+        System.out.println(&quot;Duplicates case [1, 1, 5]: &quot; + usingSinglePass(withDuplicates));
+    }
+}</code></pre></details><details id="smallestnumber" class="prog"><summary><b>Smallest number</b><span>Find the smallest number in an array.</span></summary><p class="filename">SmallestNumber.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Find the smallest number in an array.
+ *
+ * Example:
+ *   Input:  [2, 98, 3, 1, 6, 8]
+ *   Output: 1
+ *
+ * This is the mirror image of LargestNumber — same patterns, flipped
+ * comparisons.
+ */
+public class SmallestNumber {
+
+    /**
+     * Approach 1: Loop with a running champion.
+     *
+     * Idea: keep the smallest value seen so far. Mirror of the largest
+     * version: initialize to Integer.MAX_VALUE (not 0!) so the champion
+     * always loses to the first real element, even on all-positive or
+     * all-negative arrays.
+     */
+    public static int usingLoop(int[] nums) {
+        int smallest = Integer.MAX_VALUE;
+
+        for (int num : nums) {
+            if (num &lt; smallest) {
+                smallest = num;
+            }
+        }
+
+        return smallest;
+    }
+
+    /**
+     * Approach 2: Sort and take the FIRST element.
+     *
+     * Idea: after an ascending sort, the smallest value sits in slot 0.
+     * We clone first so the caller&#x27;s array is not reordered.
+     */
+    public static int usingSorting(int[] nums) {
+        int[] sorted = nums.clone();
+        Arrays.sort(sorted);
+        return sorted[0];
+    }
+
+    /**
+     * Approach 3: Java 8 Streams.
+     *
+     * Idea: same stream as the largest version, with min() instead of
+     * max().
+     */
+    public static int usingStreams(int[] nums) {
+        return Arrays.stream(nums)
+                .min()
+                .orElseThrow();
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 2, 98, 3, 1, 6, 8 };
+
+        System.out.println(&quot;Loop:    &quot; + usingLoop(input));
+        System.out.println(&quot;Sorting: &quot; + usingSorting(input));
+        System.out.println(&quot;Streams: &quot; + usingStreams(input));
+    }
+}</code></pre></details><details id="sortanarray" class="prog"><summary><b>Sort an array</b><span>Sort an array in ascending order using built-in tools.</span></summary><p class="filename">SortAnArray.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+import java.util.Collections;
+
+/**
+ * Problem: Sort an array in ascending order using built-in tools.
+ *
+ * Example:
+ *   Input:  [4, 3, 4, 4, 5, 9, 7, 8]
+ *   Output: [3, 4, 4, 4, 5, 7, 8, 9]
+ *
+ * For the hand-written version (Bubble Sort), see BubbleSort in this
+ * package — this file is about knowing what the standard library gives
+ * you for free.
+ */
+public class SortAnArray {
+
+    /**
+     * Approach 1: Arrays.sort (THE standard answer).
+     *
+     * Idea: Arrays.sort(int[]) sorts the array IN PLACE — there is no
+     * return value; the array you pass in comes back sorted. We clone
+     * the input first so the original order is preserved for the other
+     * demos.
+     */
+    public static int[] usingArraysSort(int[] nums) {
+        int[] sorted = nums.clone();
+        Arrays.sort(sorted);
+        return sorted;
+    }
+
+    /**
+     * Approach 2: Descending order with Collections.reverseOrder().
+     *
+     * Idea: Arrays.sort can take a Comparator (an object that decides
+     * which of two values comes first), and Collections.reverseOrder()
+     * is the ready-made &quot;biggest first&quot; comparator. Catch: comparators
+     * only work on OBJECTS, so the int[] must be BOXED into Integer[]
+     * first — boxing means wrapping each primitive int in an Integer
+     * object.
+     */
+    public static Integer[] usingDescending(int[] nums) {
+        Integer[] boxed = Arrays.stream(nums).boxed().toArray(Integer[]::new);
+        Arrays.sort(boxed, Collections.reverseOrder());
+        return boxed;
+    }
+
+    /**
+     * Approach 3: Java 8 Streams.
+     *
+     * Idea: stream the array, let sorted() order it, and collect back
+     * with toArray(). Streams never mutate the source, so no clone
+     * needed.
+     */
+    public static int[] usingStreams(int[] nums) {
+        return Arrays.stream(nums)
+                .sorted()
+                .toArray();
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 4, 3, 4, 4, 5, 9, 7, 8 };
+
+        System.out.println(&quot;Arrays.sort:        &quot; + Arrays.toString(usingArraysSort(input)));
+        System.out.println(&quot;Descending:         &quot; + Arrays.toString(usingDescending(input)));
+        System.out.println(&quot;Streams:            &quot; + Arrays.toString(usingStreams(input)));
+        System.out.println(&quot;Original untouched: &quot; + Arrays.toString(input));
+    }
+}</code></pre></details><details id="swapprogram" class="prog"><summary><b>Swap program</b><span>Swap the values of two variables.</span></summary><p class="filename">SwapProgram.java</p><pre><code class="java">package com.sdet.studyplan.easyarrays;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Swap the values of two variables.
+ *
+ * Example: a = 10, b = 20  -&gt;  a = 20, b = 10
+ *
+ * Note: Java passes arguments BY VALUE, so a void swap(a, b) method can
+ * never change the caller&#x27;s variables. That is why these methods return
+ * the swapped pair instead.
+ */
+public class SwapProgram {
+
+    /**
+     * Approach 1: Temp variable (the standard answer).
+     *
+     * Idea: park &quot;a&quot; in temp so its value survives while we overwrite it.
+     */
+    public static int[] usingTempVariable(int a, int b) {
+        int temp = a; // save a
+        a = b;        // a takes b&#x27;s value
+        b = temp;     // b takes the saved original a
+        return new int[] { a, b };
+    }
+
+    /**
+     * Approach 2: Arithmetic, no third variable.
+     * Warning: a + b can overflow Integer.MAX_VALUE and corrupt the result.
+     *
+     * Idea: store the SUM in &quot;a&quot;, then recover each original value by
+     * subtracting the other.
+     */
+    public static int[] usingArithmetic(int a, int b) {
+        a = a + b; // a now holds (original a + original b)
+        b = a - b; // sum - b = original a  -&gt; b is swapped
+        a = a - b; // sum - original a = original b -&gt; a is swapped
+        return new int[] { a, b };
+    }
+
+    /**
+     * Approach 3: XOR, no third variable, no overflow.
+     *
+     * Idea: relies on two bit facts — x ^ x = 0 and x ^ 0 = x.
+     * Values cancel out pairwise, leaving each variable with the other&#x27;s
+     * original value.
+     */
+    public static int[] usingXor(int a, int b) {
+        a = a ^ b; // a = a ^ b
+        b = a ^ b; // b = (a ^ b) ^ b = a ^ (b ^ b) = a ^ 0 = original a
+        a = a ^ b; // a = (a ^ b) ^ a = (a ^ a) ^ b = 0 ^ b = original b
+        return new int[] { a, b };
+    }
+
+    public static void main(String[] args) {
+        int a = 10;
+        int b = 20;
+        System.out.println(&quot;Before:          a=&quot; + a + &quot; b=&quot; + b);
+
+        System.out.println(&quot;Temp variable:   &quot; + Arrays.toString(usingTempVariable(a, b)));
+        System.out.println(&quot;Arithmetic:      &quot; + Arrays.toString(usingArithmetic(a, b)));
+        System.out.println(&quot;XOR:             &quot; + Arrays.toString(usingXor(a, b)));
+    }
+}</code></pre></details>
+<p class="sitenav"><a href="easystrings.html">&larr; Strings and numbers</a><a href="../../index.html#java">All lessons</a><a href="medium.html">Medium &rarr;</a></p>
+</main>
+<script>
+document.getElementById('openall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = true; });
+});
+document.getElementById('shutall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = false; });
+});
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('.chips a');
+  if (!a) return;
+  var d = document.querySelector(a.getAttribute('href'));
+  if (d) d.open = true;
+});
+</script>
+</body>
+</html>

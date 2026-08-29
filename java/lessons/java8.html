@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Java 8 &middot; Java</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="medium.html">&larr;</a><a class="tb-home" href="../../index.html#java">Java</a><a class="tb-next" href="excel.html">&rarr;</a></div>
+<main class="sheet">
+<p class="eyebrow">Java &middot; 1 programs</p>
+<h1>Java 8</h1>
+<p class="standfirst">Lambdas and predicates. Tap a program to open its code.
+Every one of these is your own, written with plain loops.</p>
+<p class="chips"><a href="#lambdaandpredicate">Lambda and predicate</a></p>
+<p class="chips-actions"><button type="button" id="openall">Open all</button>
+<button type="button" id="shutall">Close all</button></p>
+<details id="lambdaandpredicate" class="prog"><summary><b>Lambda and predicate</b><span>Java 8 core vocabulary, in one file: FUNCTIONAL INTERFACE, LAMBDA, and PREDICATE. - FUNCTIONAL INTERFACE: an interface with exactly ONE abstract method.</span></summary><p class="filename">LambdaAndPredicate.java</p><pre><code class="java">package com.sdet.studyplan.java8;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * Java 8 core vocabulary, in one file: FUNCTIONAL INTERFACE, LAMBDA, and
+ * PREDICATE.
+ *
+ * - FUNCTIONAL INTERFACE: an interface with exactly ONE abstract method.
+ *   Because there is only one method to implement, Java lets you supply
+ *   that single method inline instead of writing a whole class.
+ *   Predicate&lt;T&gt; is the classic example: its one method is
+ *   &quot;boolean test(T value)&quot;.
+ *
+ * - LAMBDA: the inline implementation of that single method.
+ *   Read &quot;number -&gt; number % 2 == 0&quot; as: &quot;take a number, return whether
+ *   it is even&quot;. Left of the arrow are the parameters, right is the body.
+ *
+ * Why a test engineer cares: Selenium&#x27;s waits, stream filters, and most
+ * modern Java test libraries accept lambdas, so you will read and write
+ * them constantly.
+ */
+public class LambdaAndPredicate {
+
+    public static void main(String[] args) {
+
+        // A Predicate&lt;Integer&gt; named isEven: one input, true/false answer.
+        Predicate&lt;Integer&gt; isEven = number -&gt; number % 2 == 0;
+
+        // Call its single method, test(), directly.
+        System.out.println(&quot;isEven.test(4): &quot; + isEven.test(4));
+        System.out.println(&quot;isEven.test(7): &quot; + isEven.test(7));
+
+        // The same logic BEFORE Java 8 took an anonymous class — this is
+        // what the lambda replaces (no need to write this way anymore):
+        Predicate&lt;Integer&gt; isEvenOldStyle = new Predicate&lt;Integer&gt;() {
+            @Override
+            public boolean test(Integer number) {
+                return number % 2 == 0;
+            }
+        };
+        System.out.println(&quot;Old style:      &quot; + isEvenOldStyle.test(4));
+
+        // Where lambdas really shine: passing behavior into a method.
+        // Stream.filter() keeps only the elements for which the predicate
+        // returns true.
+        List&lt;Integer&gt; numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8);
+
+        List&lt;Integer&gt; evens = numbers.stream()
+                .filter(isEven) // reuse the same predicate object
+                .collect(Collectors.toList());
+
+        System.out.println(&quot;Filtered evens: &quot; + evens);
+
+        // Predicates combine: and(), or(), negate().
+        Predicate&lt;Integer&gt; isPositive = number -&gt; number &gt; 0;
+        List&lt;Integer&gt; mixed = Arrays.asList(-4, -3, -2, -1, 0, 1, 2, 3, 4);
+
+        List&lt;Integer&gt; positiveEvens = mixed.stream()
+                .filter(isEven.and(isPositive)) // both must be true
+                .collect(Collectors.toList());
+
+        System.out.println(&quot;Positive evens: &quot; + positiveEvens);
+    }
+}</code></pre></details>
+<p class="sitenav"><a href="medium.html">&larr; Medium</a><a href="../../index.html#java">All lessons</a><a href="excel.html">Excel with POI &rarr;</a></p>
+</main>
+<script>
+document.getElementById('openall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = true; });
+});
+document.getElementById('shutall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = false; });
+});
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('.chips a');
+  if (!a) return;
+  var d = document.querySelector(a.getAttribute('href'));
+  if (d) d.open = true;
+});
+</script>
+</body>
+</html>

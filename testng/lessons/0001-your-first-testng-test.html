@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 · Your first TestNG test</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><span class="tb-x"></span><a class="tb-home" href="../../index.html#testng">TestNG</a><a class="tb-next" href="0002-the-lifecycle-annotations.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 01 &middot; TestNG</p>
+<h1>Your first TestNG test</h1>
+<p class="standfirst">You have run tests before. Today you write one, and hand the
+judging over to the machine.</p>
+
+<h2>The shift you are making</h2>
+
+<p>Every Java program in this repo ends the same way. A <code>main</code> method
+prints something, and <em>you</em> read the output and decide whether it looked
+right. Open <code>Palindrome.java</code> and you will find exactly that.</p>
+
+<p>That works for three checks. It falls apart at three hundred, and it falls apart
+completely the moment someone else runs it, because the judgement lived in your head
+and nobody else has your head. A test framework moves the judgement into the code.</p>
+
+<p>TestNG does three jobs for you, and it is worth naming them separately because
+interviewers ask about them separately:</p>
+
+<ul>
+  <li>It <strong>finds</strong> your test methods, so you never write <code>main</code> again.</li>
+  <li>It <strong>runs</strong> them, in an order and a lifecycle you control.</li>
+  <li>It <strong>judges</strong> them, and reports pass or fail without asking you.</li>
+</ul>
+
+<p>Lesson 1 is only about the third job. The other two arrive in lessons 2 and 3.</p>
+
+<h2>Two words of vocabulary</h2>
+
+<p><strong>Test method.</strong> An ordinary Java method marked with
+<code>@Test</code>. TestNG calls it. It must be <code>public</code> and it takes no
+arguments (until lesson 4, when data providers change that).</p>
+
+<p><strong>Assertion.</strong> A statement of what must be true. If it is true,
+nothing happens and the method keeps going. If it is false, it throws
+<code>AssertionError</code> and TestNG marks the test failed. That is the whole
+mechanism. A test passes by <em>not throwing</em>.</p>
+
+<div class="note">
+  <span class="lbl">The consequence people miss</span>
+  <p>A test method with no assertion in it always passes. It cannot do anything
+  else, because passing just means "did not throw". A test that prints and never
+  asserts is theatre.</p>
+</div>
+
+<h2>Write it</h2>
+
+<p>Create this file. Type it rather than pasting it, this once.</p>
+
+<p class="filename">src/test/java/com/sdet/studyplan/testng/PalindromeTest.java</p>
+<pre><code><span class="k">package</span> com.sdet.studyplan.testng;
+
+<span class="k">import</span> com.sdet.studyplan.medium.Palindrome;
+<span class="k">import</span> org.testng.Assert;
+<span class="k">import</span> org.testng.annotations.Test;
+
+<span class="c">// No main() method anywhere. That is the point.</span>
+<span class="k">public class</span> PalindromeTest {
+
+    <span class="k">@Test</span>
+    <span class="k">public void</span> madamIsAPalindrome() {
+        <span class="k">boolean</span> result = Palindrome.usingTwoPointers(<span class="s">"madam"</span>);
+        Assert.assertTrue(result, <span class="s">"'madam' should be a palindrome"</span>);
+    }
+
+    <span class="k">@Test</span>
+    <span class="k">public void</span> helloIsNotAPalindrome() {
+        <span class="k">boolean</span> result = Palindrome.usingTwoPointers(<span class="s">"hello"</span>);
+        Assert.assertFalse(result, <span class="s">"'hello' should not be a palindrome"</span>);
+    }
+}</code></pre>
+
+<p>Three details in that file are doing real work.</p>
+
+<p><strong>The location.</strong> It sits under <code>src/test/java</code>, not
+<code>src/main/java</code>. Maven treats those two trees differently: test code can
+see main code, main code cannot see test code, and test code is never packaged into
+the shipped jar. Put a test in the wrong tree and it either will not run or will
+ship to production.</p>
+
+<p><strong>The class name.</strong> <code>PalindromeTest</code> ends in
+<code>Test</code>, and that is not a style choice. Maven Surefire, the plugin that
+runs tests during <code>mvn test</code>, only looks at classes matching
+<code>Test*.java</code>, <code>*Test.java</code>, <code>*Tests.java</code>, or
+<code>*TestCase.java</code>
+(<a href="https://maven.apache.org/surefire/maven-surefire-plugin/examples/inclusion-exclusion.html">Surefire docs</a>).
+Name it <code>PalindromeChecks</code> and <code>mvn test</code> will report zero
+tests and a green build, which is the most dangerous output in this entire lesson.</p>
+
+<p><strong>The second argument to the assertion.</strong> That message is what you
+will read at 2am when the build breaks. Write it as a statement of what
+<em>should</em> be true, not a description of the code.</p>
+
+<h2>Run it</h2>
+
+<pre><code>mvn test -Dtest=PalindromeTest</code></pre>
+
+<p><code>-Dtest=</code> narrows the run to one class. Drop it and Maven runs every
+test in the project. You should see this:</p>
+
+<pre><code>[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.sdet.studyplan.testng.PalindromeTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.164 s
+[INFO]
+[INFO] BUILD SUCCESS</code></pre>
+
+<div class="win">
+  <span class="lbl">That is the win</span>
+  <p>Two methods you never called ran anyway, checked themselves, and reported.
+  You wrote no <code>main</code>, no <code>println</code>, and no loop over test
+  cases. TestNG found the methods by their annotation and did the rest.</p>
+</div>
+
+<h2>Now break it on purpose</h2>
+
+<p>This half matters more than the green run. A test you have never seen fail is a
+test you do not yet trust. Change <code>"hello"</code> to <code>"racecar"</code> in
+the second method and run it again.</p>
+
+<pre><code>[ERROR] Tests run: 2, <span class="hl">Failures: 1</span>, Errors: 0, Skipped: 0 &lt;&lt;&lt; FAILURE!
+[ERROR] PalindromeTest.helloIsNotAPalindrome &lt;&lt;&lt; FAILURE!
+java.lang.AssertionError: <span class="hl">'hello' should not be a palindrome</span> expected [false] but found [true]
+    at org.testng.Assert.assertFalse(Assert.java:78)
+    at ...PalindromeTest.helloIsNotAPalindrome(<span class="hl">PalindromeTest.java:18</span>)</code></pre>
+
+<p>Read that top line the way an interviewer would want you to. Your message comes
+first, then TestNG's own <code>expected [false] but found [true]</code>, then the
+exact file and line. Notice too that the <em>first</em> test still ran and still
+passed. One failure does not stop the suite. Each test method stands alone.</p>
+
+<p>Then put <code>"hello"</code> back and confirm it goes green again.</p>
+
+<h2>The assertion methods, and the one that catches people</h2>
+
+<p>Everything lives in <code>org.testng.Assert</code>, all static.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>The assertions you will actually use</caption>
+  <tr><th>Call</th><th>Fails when</th></tr>
+  <tr><td><code>assertTrue(condition, msg)</code></td><td>condition is false</td></tr>
+  <tr><td><code>assertFalse(condition, msg)</code></td><td>condition is true</td></tr>
+  <tr><td><code>assertEquals(actual, expected, msg)</code></td><td>the two are not equal</td></tr>
+  <tr><td><code>assertNotEquals(actual, expected, msg)</code></td><td>the two are equal</td></tr>
+  <tr><td><code>assertNull(object, msg)</code></td><td>object is not null</td></tr>
+  <tr><td><code>assertNotNull(object, msg)</code></td><td>object is null</td></tr>
+  <tr><td><code>assertSame(actual, expected, msg)</code></td><td>they are different objects in memory</td></tr>
+  <tr><td><code>fail(msg)</code></td><td>always &mdash; for branches that should be unreachable</td></tr>
+</table>
+</div>
+
+<div class="warn">
+  <span class="lbl">Interview trap</span>
+  <p>TestNG's order is <code>assertEquals(actual, expected)</code>. JUnit's is the
+  reverse, <code>assertEquals(expected, actual)</code>. Get it backwards and your
+  test still works, but every failure message lies to you about which value was
+  which. Verified in the TestNG 7.7.0 source:
+  <code>public static void assertEquals(Object actual, Object expected)</code>.</p>
+</div>
+
+<p>Note that <code>assertEquals</code> on objects uses <code>.equals()</code>, while
+<code>assertSame</code> compares references with <code>==</code>. That is the same
+distinction you met in <code>Palindrome.usingReverse</code>.</p>
+
+<h2>Check yourself</h2>
+
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="3"
+  data-ok="Nothing throws, so nothing fails. TestNG only knows a test failed if an exception escapes the method."
+  data-no="Nothing in the method throws anything. TestNG reports a pass, because passing means the method returned without throwing. Printing is invisible to the framework's verdict.">
+  <p class="q">What does TestNG report for this method?
+  <pre><code><span class="k">@Test</span>
+<span class="k">public void</span> checkTotal() {
+    System.out.println(2 + 2);
+}</code></pre></p>
+  <button class="opt">It fails, because nothing was asserted</button>
+  <button class="opt">It is skipped, because there is nothing to check</button>
+  <button class="opt">It passes, because nothing threw an error</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="Surefire only scans Test*, *Test, *Tests and *TestCase. LoginChecks matches none of them, so the class is never opened."
+  data-no="The annotation is fine and the code compiles. Surefire never even looks inside the class, because the file name matches none of its four default patterns.">
+  <p class="q">A class named <code>LoginChecks</code> holds three <code>@Test</code>
+  methods. You run <code>mvn test</code>. What happens?</p>
+  <button class="opt">All three test methods run and pass normally</button>
+  <button class="opt">No tests run at all and the build is green</button>
+  <button class="opt">The build fails with a class naming error</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="TestNG reads it as actual first, expected second, so the message is printed backwards even though the comparison itself is correct."
+  data-no="Equality does not care about order, so the test still passes and fails at the right times. The damage is to the failure message: TestNG will call 5 the actual value and the real result the expected one.">
+  <p class="q">You write <code>Assert.assertEquals(5, list.size())</code> in TestNG,
+  meaning "the size should be 5". What is the actual consequence?</p>
+  <button class="opt">Failure messages name the wrong value as actual</button>
+  <button class="opt">The assertion silently passes whatever size is</button>
+  <button class="opt">The test throws an argument order exception</button>
+</div>
+
+<h2>Before the next lesson</h2>
+
+<p>Add one more test method to <code>PalindromeTest</code> that checks
+<code>Palindrome.usingReverse</code> agrees with <code>usingTwoPointers</code> on
+the word <code>"racecar"</code>. Use <code>assertEquals</code> and get the argument
+order right. Then run the whole file and confirm three tests pass.</p>
+
+<p>Lesson 2 takes on the second job: TestNG <em>running</em> your tests. That is the
+lifecycle annotations, <code>@BeforeMethod</code> through <code>@AfterSuite</code>,
+and the execution order question that opens most SDET interviews.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Read the <a href="https://testng.org/index.html#_introduction">Introduction and
+  "Writing tests with TestNG"</a> sections of the official TestNG documentation.
+  Ten minutes. It is written by the people who built it, and it is the source every
+  claim above was checked against.</p>
+
+  <h3>Stuck on anything?</h3>
+  <p>Ask me. If a line in that file does not make sense, if the run does not look
+  like the output above, or if you want to know why something is designed the way it
+  is, say so and we will take it apart together. Questions asked now are cheaper than
+  questions asked in an interview.</p>
+
+  <p class="nav">
+    Mission
+    Resources
+    <a href="0002-the-lifecycle-annotations.html">Lesson 2 &rarr; the lifecycle annotations</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="../../index.html#testng">All lessons</a><a href="0002-the-lifecycle-annotations.html">Lesson 2 &rarr;</a></p>
+</main>
+</body>
+</html>

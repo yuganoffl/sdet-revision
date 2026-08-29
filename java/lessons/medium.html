@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medium &middot; Java</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="easyarrays.html">&larr;</a><a class="tb-home" href="../../index.html#java">Java</a><a class="tb-next" href="java8.html">&rarr;</a></div>
+<main class="sheet">
+<p class="eyebrow">Java &middot; 15 programs</p>
+<h1>Medium</h1>
+<p class="standfirst">Two-sum, rotation, compression, common prefix, grouping. Tap a program to open its code.
+Every one of these is your own, written with plain loops.</p>
+<p class="chips"><a href="#groupcharactersbyfrequency">Group characters by frequency</a><a href="#longestcommonprefix">Longest common prefix</a><a href="#mergetwoarrays">Merge two arrays</a><a href="#mostfrequentprefix">Most frequent prefix</a><a href="#palindrome">Palindrome</a><a href="#removeduplicates">Remove duplicates</a><a href="#removeduplicatesstream">Remove duplicates stream</a><a href="#replacenthoccurrence">Replace nth occurrence</a><a href="#reverseonlyletters">Reverse only letters</a><a href="#reversethelastwordinthesentence">Reverse the last word in the sentence</a><a href="#reversethestringwhilepreservingwhitespace">Reverse the string while preserving whitespace</a><a href="#rotatearray">Rotate array</a><a href="#stringcompression">String compression</a><a href="#triplesum">Triple sum</a><a href="#twosum">Two sum</a></p>
+<p class="chips-actions"><button type="button" id="openall">Open all</button>
+<button type="button" id="shutall">Close all</button></p>
+<details id="groupcharactersbyfrequency" class="prog"><summary><b>Group characters by frequency</b><span>Count character frequencies in a string, then GROUP the characters by how often they appear.</span></summary><p class="filename">GroupCharactersByFrequency.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Problem: Count character frequencies in a string, then GROUP the
+ * characters by how often they appear.
+ *
+ * Example for &quot;wwweerr&quot;:
+ *   Frequencies: w=3, e=2, r=2
+ *   Grouped:     3=[w], 2=[e, r]
+ *
+ * This is really two steps glued together: (1) build a frequency map,
+ * (2) flip it around. If step 1 is unfamiliar, revisit
+ * easystrings.CountCharacterFrequency first.
+ */
+public class GroupCharactersByFrequency {
+
+    /**
+     * Approach 1: putIfAbsent style.
+     *
+     * Idea: walk the frequency map entry by entry. For each character,
+     * make sure a list exists for its count (putIfAbsent creates it only
+     * when missing), then add the character to that list.
+     * The grouped map is count -&gt; list of characters with that count.
+     */
+    public static Map&lt;Integer, List&lt;Character&gt;&gt; usingPutIfAbsent(String text) {
+        Map&lt;Character, Integer&gt; frequency = countFrequency(text);
+
+        Map&lt;Integer, List&lt;Character&gt;&gt; grouped = new LinkedHashMap&lt;&gt;();
+        for (Map.Entry&lt;Character, Integer&gt; entry : frequency.entrySet()) {
+            char ch = entry.getKey();
+            int count = entry.getValue();
+
+            grouped.putIfAbsent(count, new ArrayList&lt;&gt;()); // create list on first sight of this count
+            grouped.get(count).add(ch);
+        }
+        return grouped;
+    }
+
+    /**
+     * Approach 2: computeIfAbsent style (Java 8+).
+     *
+     * Idea: same grouping, one line shorter. computeIfAbsent(count,
+     * k -&gt; new ArrayList&lt;&gt;()) returns the existing list OR creates and
+     * returns a new one — either way you get a list back and can add()
+     * to it immediately. This pattern shows up constantly in real code,
+     * so it is worth recognizing at a glance.
+     */
+    public static Map&lt;Integer, List&lt;Character&gt;&gt; usingComputeIfAbsent(String text) {
+        Map&lt;Character, Integer&gt; frequency = countFrequency(text);
+
+        Map&lt;Integer, List&lt;Character&gt;&gt; grouped = new LinkedHashMap&lt;&gt;();
+        for (Map.Entry&lt;Character, Integer&gt; entry : frequency.entrySet()) {
+            grouped.computeIfAbsent(entry.getValue(), k -&gt; new ArrayList&lt;&gt;())
+                    .add(entry.getKey());
+        }
+        return grouped;
+    }
+
+    /** Step 1 shared by both approaches: character -&gt; occurrence count. */
+    private static Map&lt;Character, Integer&gt; countFrequency(String text) {
+        Map&lt;Character, Integer&gt; frequency = new LinkedHashMap&lt;&gt;();
+        for (char ch : text.toCharArray()) {
+            frequency.merge(ch, 1, Integer::sum);
+        }
+        return frequency;
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;wwweerr&quot;;
+
+        System.out.println(&quot;putIfAbsent:     &quot; + usingPutIfAbsent(input));
+        System.out.println(&quot;computeIfAbsent: &quot; + usingComputeIfAbsent(input));
+    }
+}</code></pre></details><details id="longestcommonprefix" class="prog"><summary><b>Longest common prefix</b><span>Find the longest prefix shared by ALL words in an array.</span></summary><p class="filename">LongestCommonPrefix.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Find the longest prefix shared by ALL words in an array.
+ *
+ * Example:
+ *   Input:  [&quot;sqlex&quot;, &quot;sqlengine&quot;, &quot;sqlite&quot;, &quot;sql&quot;]
+ *   Output: &quot;sql&quot;
+ *
+ * If no prefix is common to every word, the answer is &quot;&quot;.
+ */
+public class LongestCommonPrefix {
+
+    /**
+     * Approach 1: Shrinking candidate.
+     *
+     * Idea: assume the first word IS the answer, then check every other
+     * word against it. Whenever a word does not start with the
+     * candidate, chop one character off its end and try again. The
+     * candidate only ever shrinks, and whatever survives every word is
+     * the longest shared prefix.
+     */
+    public static String usingShrinkingCandidate(String[] words) {
+        if (words == null || words.length == 0) {
+            return &quot;&quot;;
+        }
+
+        String prefix = words[0]; // first guess: the whole first word
+
+        for (int i = 1; i &lt; words.length; i++) {
+            // Shrink until words[i] starts with the candidate.
+            while (!words[i].startsWith(prefix)) {
+                prefix = prefix.substring(0, prefix.length() - 1); // drop the last char
+                if (prefix.isEmpty()) {
+                    return &quot;&quot;; // nothing left to shrink -&gt; no common prefix
+                }
+            }
+        }
+
+        return prefix;
+    }
+
+    /**
+     * Approach 2: Sort, then compare only first and last.
+     *
+     * Idea: after sorting alphabetically, the two MOST DIFFERENT words
+     * land at the two ends. Any prefix shared by those two extremes is
+     * automatically shared by every word in between — so the answer is
+     * just the common start of words[0] and words[last]. We sort a
+     * clone so the caller&#x27;s array keeps its order.
+     */
+    public static String usingSortFirstLast(String[] words) {
+        if (words == null || words.length == 0) {
+            return &quot;&quot;;
+        }
+
+        String[] sorted = words.clone();
+        Arrays.sort(sorted);
+
+        String first = sorted[0];
+        String last = sorted[sorted.length - 1];
+
+        // Walk both ends in parallel while their characters agree.
+        int i = 0;
+        while (i &lt; first.length() &amp;&amp; i &lt; last.length() &amp;&amp; first.charAt(i) == last.charAt(i)) {
+            i++;
+        }
+
+        return first.substring(0, i);
+    }
+
+    public static void main(String[] args) {
+        String[] words = { &quot;sqlex&quot;, &quot;sqlengine&quot;, &quot;sqlite&quot;, &quot;sql&quot; };
+
+        System.out.println(&quot;Shrinking candidate: &quot; + usingShrinkingCandidate(words));
+        System.out.println(&quot;Sort first/last:     &quot; + usingSortFirstLast(words));
+    }
+}</code></pre></details><details id="mergetwoarrays" class="prog"><summary><b>Merge two arrays</b><span>Merge two arrays into one new array — all elements of the first, followed by all elements of the second.</span></summary><p class="filename">MergeTwoArrays.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Merge two arrays into one new array — all elements of the
+ * first, followed by all elements of the second.
+ *
+ * Example:
+ *   Input:  [1, 2, 3, 4] and [5, 6, 7]
+ *   Output: [1, 2, 3, 4, 5, 6, 7]
+ *
+ * Java term worth learning: System.arraycopy(source, sourceStart,
+ * destination, destStart, howMany) copies a whole chunk of an array in
+ * one call. It is what the JDK itself uses internally.
+ */
+public class MergeTwoArrays {
+
+    /**
+     * Approach 1: Copy element by element with loops.
+     *
+     * Idea: create an array big enough for both inputs, then walk the
+     * first input copying values into slots 0..a.length-1, and the second
+     * input into slots a.length onwards. Note the loop conditions use
+     * &quot;i &lt; length&quot; — writing &quot;i &lt; length - 1&quot; by mistake would silently
+     * drop the last element of each array.
+     */
+    public static int[] usingLoops(int[] first, int[] second) {
+        int[] merged = new int[first.length + second.length];
+
+        for (int i = 0; i &lt; first.length; i++) {
+            merged[i] = first[i];
+        }
+
+        for (int i = 0; i &lt; second.length; i++) {
+            merged[first.length + i] = second[i]; // offset by first array&#x27;s length
+        }
+
+        return merged;
+    }
+
+    /**
+     * Approach 2: System.arraycopy (the built-in way).
+     *
+     * Idea: same plan, but each copy is a single library call instead of
+     * a hand-written loop. The five arguments are: source array, index to
+     * start reading from, destination array, index to start writing at,
+     * and how many elements to copy.
+     */
+    public static int[] usingArrayCopy(int[] first, int[] second) {
+        int[] merged = new int[first.length + second.length];
+
+        System.arraycopy(first, 0, merged, 0, first.length);
+        System.arraycopy(second, 0, merged, first.length, second.length);
+
+        return merged;
+    }
+
+    public static void main(String[] args) {
+        int[] first = { 1, 2, 3, 4 };
+        int[] second = { 5, 6, 7 };
+
+        System.out.println(&quot;Loops:            &quot; + Arrays.toString(usingLoops(first, second)));
+        System.out.println(&quot;System.arraycopy: &quot; + Arrays.toString(usingArrayCopy(first, second)));
+    }
+}</code></pre></details><details id="mostfrequentprefix" class="prog"><summary><b>Most frequent prefix</b><span>Given an array of words, find the prefix shared by the MOST words.</span></summary><p class="filename">MostFrequentPrefix.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Problem: Given an array of words, find the prefix shared by the MOST
+ * words. When several prefixes tie, the LONGEST one wins — &quot;sql&quot; beats
+ * &quot;s&quot; because it describes the shared start more precisely.
+ *
+ * Example:
+ *   Input:  [&quot;sqlex&quot;, &quot;sqlengine&quot;, &quot;sqlite&quot;, &quot;sql&quot;, &quot;java&quot;]
+ *   Output: &quot;sql&quot;  (4 words start with it)
+ *
+ * Don&#x27;t confuse this with the LONGEST COMMON PREFIX problem (see
+ * LongestCommonPrefix), which asks for the longest prefix shared by ALL
+ * words — a different question.
+ */
+public class MostFrequentPrefix {
+
+    /**
+     * Approach: Count every prefix of every word, then pick the best.
+     *
+     * Idea: a word contributes +1 to each of its prefixes (&quot;sqlex&quot; votes
+     * for &quot;s&quot;, &quot;sq&quot;, &quot;sql&quot;, &quot;sqle&quot;, &quot;sqlex&quot;). After counting all votes
+     * in a map, a prefix&#x27;s count is exactly the number of words that
+     * start with it. Then we scan the map: strictly-greater count takes
+     * the lead, and an equal count only takes the lead when the new
+     * prefix is longer (the tie-break rule above).
+     */
+    public static String usingPrefixVotes(String[] words) {
+        Map&lt;String, Integer&gt; prefixVotes = new LinkedHashMap&lt;&gt;();
+
+        // Every word votes for all of its prefixes.
+        for (String word : words) {
+            for (int end = 1; end &lt;= word.length(); end++) {
+                String prefix = word.substring(0, end); // substring(0, end) = prefix of length &quot;end&quot;
+                prefixVotes.merge(prefix, 1, Integer::sum);
+            }
+        }
+
+        String bestPrefix = &quot;&quot;;
+        int bestCount = 0;
+
+        for (Map.Entry&lt;String, Integer&gt; entry : prefixVotes.entrySet()) {
+            String prefix = entry.getKey();
+            int count = entry.getValue();
+
+            if (count &gt; bestCount
+                    || (count == bestCount &amp;&amp; prefix.length() &gt; bestPrefix.length())) {
+                bestPrefix = prefix;
+                bestCount = count;
+            }
+        }
+
+        return bestPrefix;
+    }
+
+    public static void main(String[] args) {
+        String[] words = { &quot;sqlex&quot;, &quot;sqlengine&quot;, &quot;sqlite&quot;, &quot;sql&quot;, &quot;java&quot; };
+
+        System.out.println(&quot;Most frequent prefix: &quot; + usingPrefixVotes(words));
+    }
+}</code></pre></details><details id="palindrome" class="prog"><summary><b>Palindrome</b><span>Check whether a string is a PALINDROME — it reads the same forwards and backwards.</span></summary><p class="filename">Palindrome.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+/**
+ * Problem: Check whether a string is a PALINDROME — it reads the same
+ * forwards and backwards.
+ *
+ * Examples: &quot;madam&quot; -&gt; true, &quot;racecar&quot; -&gt; true, &quot;hello&quot; -&gt; false
+ *
+ * Java gotcha worth learning: compare strings with .equals(), NEVER with
+ * ==. The == operator checks whether two references point to the same
+ * object in memory; .equals() checks whether the TEXT is the same.
+ */
+public class Palindrome {
+
+    /**
+     * Approach 1: Two pointers walking towards each other.
+     *
+     * Idea: place one finger on the first character and one on the last.
+     * Compare them; if they differ, it cannot be a palindrome. Otherwise
+     * move both fingers one step inwards and repeat until they meet.
+     */
+    public static boolean usingTwoPointers(String text) {
+        int left = 0;
+        int right = text.length() - 1;
+
+        while (left &lt; right) {
+            if (text.charAt(left) != text.charAt(right)) {
+                return false; // mismatch found -&gt; not a palindrome
+            }
+            left++;
+            right--;
+        }
+        return true; // every pair matched
+    }
+
+    /**
+     * Approach 2: Reverse it and compare with the original.
+     *
+     * Idea: a palindrome equals its own reversal, so reverse the string
+     * and check equality. Shorter to write, at the cost of building a
+     * second string.
+     */
+    public static boolean usingReverse(String text) {
+        String reversed = new StringBuilder(text).reverse().toString();
+        return text.equals(reversed); // .equals(), not ==
+    }
+
+    public static void main(String[] args) {
+        String[] samples = { &quot;madam&quot;, &quot;racecar&quot;, &quot;hello&quot; };
+
+        for (String sample : samples) {
+            System.out.println(sample + &quot;: two pointers -&gt; &quot; + usingTwoPointers(sample)
+                    + &quot;, reverse -&gt; &quot; + usingReverse(sample));
+        }
+    }
+}</code></pre></details><details id="removeduplicates" class="prog"><summary><b>Remove duplicates</b><span>Remove duplicate values from an array.</span></summary><p class="filename">RemoveDuplicates.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/**
+ * Problem: Remove duplicate values from an array.
+ *
+ * Example:
+ *   Input:  [2, 4, 4, 5, 5, 3, 4, 5]
+ *   Output: [2, 4, 5, 3] (order depends on the Set you choose — see below)
+ *
+ * This file is about one lesson: WHICH Set you pick changes the output.
+ * - HashSet       -&gt; dedupes, but makes NO promise about order
+ * - LinkedHashSet -&gt; dedupes AND keeps first-seen order
+ * For the sorted-array two-pointer version, see
+ * easyarrays.RemoveDuplicatesFromArray; for the Java 8 one-liner, see
+ * RemoveDuplicatesStream in this package.
+ */
+public class RemoveDuplicates {
+
+    /**
+     * Approach 1: HashSet.
+     *
+     * Idea: throw everything into a HashSet; duplicates are ignored.
+     * Fine when you only care about WHICH values exist, not their order.
+     */
+    public static Set&lt;Integer&gt; usingHashSet(int[] nums) {
+        Set&lt;Integer&gt; unique = new HashSet&lt;&gt;();
+
+        for (int num : nums) {
+            unique.add(num);
+        }
+        return unique;
+    }
+
+    /**
+     * Approach 2: LinkedHashSet.
+     *
+     * Idea: same dedupe behavior, but the set remembers the order in
+     * which values first appeared, so the output reads naturally. When
+     * someone says &quot;remove duplicates&quot; without mentioning order, this is
+     * usually the behavior they picture.
+     */
+    public static Set&lt;Integer&gt; usingLinkedHashSet(int[] nums) {
+        Set&lt;Integer&gt; unique = new LinkedHashSet&lt;&gt;();
+
+        for (int num : nums) {
+            unique.add(num);
+        }
+        return unique;
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 2, 4, 4, 5, 5, 3, 4, 5 };
+
+        System.out.println(&quot;HashSet (no order guarantee): &quot; + usingHashSet(input));
+        System.out.println(&quot;LinkedHashSet (first-seen):   &quot; + usingLinkedHashSet(input));
+    }
+}</code></pre></details><details id="removeduplicatesstream" class="prog"><summary><b>Remove duplicates stream</b><span>Remove duplicate values from an array, Java 8 Streams style.</span></summary><p class="filename">RemoveDuplicatesStream.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Remove duplicate values from an array, Java 8 Streams style.
+ *
+ * Example:
+ *   Input:  [1, 2, 3, 4, 4, 4, 5, 5, 6]
+ *   Output: [1, 2, 3, 4, 5, 6]
+ *
+ * How to read a stream pipeline: data flows through the chain top to
+ * bottom, one element at a time, and each intermediate step transforms
+ * or filters the flow. Nothing happens until a TERMINAL operation
+ * (like toArray()) asks for a result.
+ */
+public class RemoveDuplicatesStream {
+
+    /**
+     * The one-liner: stream -&gt; distinct -&gt; collect back to an array.
+     *
+     * Step by step:
+     *   Arrays.stream(nums)  turns the int[] into an IntStream (a flow of
+     *                        the array&#x27;s elements)
+     *   .distinct()          lets only the FIRST occurrence of each value
+     *                        through, dropping later repeats
+     *   .toArray()           gathers whatever survived back into an int[]
+     *
+     * Nice detail: distinct() keeps the encounter order of the source,
+     * so the output stays in the original order here.
+     */
+    public static int[] usingStream(int[] nums) {
+        return Arrays.stream(nums)
+                .distinct()
+                .toArray();
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 2, 3, 4, 4, 4, 5, 5, 6 };
+
+        System.out.println(&quot;Stream distinct: &quot; + Arrays.toString(usingStream(input)));
+    }
+}</code></pre></details><details id="replacenthoccurrence" class="prog"><summary><b>Replace nth occurrence</b><span>Walk through a string; every time the target character &#x27;a&#x27; appears, replace it with as many stars as its occurrence number — the 1st &#x27;a&#x27; becomes &quot;*&quot;, the 2nd becomes &quot;...</span></summary><p class="filename">ReplaceNthOccurrence.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+/**
+ * Problem: Walk through a string; every time the target character &#x27;a&#x27;
+ * appears, replace it with as many stars as its occurrence number —
+ * the 1st &#x27;a&#x27; becomes &quot;*&quot;, the 2nd becomes &quot;**&quot;, the 3rd becomes &quot;***&quot;.
+ *
+ * Example:
+ *   Input:  &quot;ananya&quot;
+ *   Output: &quot;*n**ny***&quot;
+ *           (1st &#x27;a&#x27; -&gt; *, 2nd &#x27;a&#x27; -&gt; **, 3rd &#x27;a&#x27; -&gt; ***)
+ */
+public class ReplaceNthOccurrence {
+
+    /**
+     * Approach 1: Counter with an inner loop for the stars.
+     *
+     * Idea: keep a counter of how many &#x27;a&#x27; characters we have met so far.
+     * On meeting the next &#x27;a&#x27;, append &quot;counter&quot; stars (inner loop does
+     * the repeating), then bump the counter. Any other character passes
+     * through unchanged.
+     */
+    public static String usingInnerLoop(String text, char target) {
+        StringBuilder result = new StringBuilder();
+        int occurrence = 0;
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+
+            if (ch == target) {
+                occurrence++; // which &#x27;a&#x27; is this? 1st, 2nd, 3rd...
+                for (int star = 0; star &lt; occurrence; star++) {
+                    result.append(&#x27;*&#x27;);
+                }
+            } else {
+                result.append(ch);
+            }
+        }
+
+        return result.toString();
+    }
+
+    /**
+     * Approach 2: String.repeat() (Java 11) instead of the inner loop.
+     *
+     * Idea: identical logic, but &quot;*&quot;.repeat(occurrence) produces the run
+     * of stars in one call. String.repeat() is a handy Java 11 addition —
+     * good to know it exists before hand-writing repeat loops.
+     */
+    public static String usingStringRepeat(String text, char target) {
+        StringBuilder result = new StringBuilder();
+        int occurrence = 0;
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+
+            if (ch == target) {
+                occurrence++;
+                result.append(&quot;*&quot;.repeat(occurrence));
+            } else {
+                result.append(ch);
+            }
+        }
+
+        return result.toString();
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;ananya&quot;;
+
+        System.out.println(&quot;Inner loop:    &quot; + usingInnerLoop(input, &#x27;a&#x27;));
+        System.out.println(&quot;String.repeat: &quot; + usingStringRepeat(input, &#x27;a&#x27;));
+    }
+}</code></pre></details><details id="reverseonlyletters" class="prog"><summary><b>Reverse only letters</b><span>Reverse ONLY the alphabet characters in a string. Every special character stays exactly where it was.</span></summary><p class="filename">ReverseOnlyLetters.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+/**
+ * Problem: Reverse ONLY the alphabet characters in a string. Every special
+ * character stays exactly where it was.
+ *
+ * Example:
+ *   Input:  &quot;$%^&amp;asdf@!lkj&quot;
+ *   Output: &quot;$%^&amp;jklf@!dsa&quot;
+ *
+ * The letters in order are a s d f l k j. Reversed they are j k l f d s a,
+ * and those go back into the same letter positions. &quot;$%^&amp;&quot; and &quot;@!&quot; never move.
+ */
+public class ReverseOnlyLetters {
+
+    /**
+     * Helper: is this character a letter?
+     *
+     * Character.isLetter does the job, but here it is written out so you can
+     * see what it checks: a-z or A-Z.
+     */
+    public static boolean isLetter(char ch) {
+        return (ch &gt;= &#x27;a&#x27; &amp;&amp; ch &lt;= &#x27;z&#x27;) || (ch &gt;= &#x27;A&#x27; &amp;&amp; ch &lt;= &#x27;Z&#x27;);
+    }
+
+    /**
+     * Approach 1: Pull the letters out, reverse them, put them back.
+     *
+     * Three easy steps:
+     *   1. Loop the string and collect every letter into one string.
+     *   2. Loop that string backwards to reverse it.
+     *   3. Loop the original again. If the character is a letter, take the
+     *      next letter from the reversed string. If not, copy it as it is.
+     *
+     * The variable &quot;next&quot; remembers how many letters we have used so far.
+     */
+    public static String usingReversedLetters(String text) {
+        String letters = &quot;&quot;;
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+            if (isLetter(ch)) {
+                letters = letters + ch;
+            }
+        }
+
+        String reversed = &quot;&quot;;
+        for (int i = letters.length() - 1; i &gt;= 0; i--) {
+            reversed = reversed + letters.charAt(i);
+        }
+
+        String result = &quot;&quot;;
+        int next = 0;
+
+        for (int i = 0; i &lt; text.length(); i++) {
+            char ch = text.charAt(i);
+
+            if (isLetter(ch)) {
+                result = result + reversed.charAt(next);
+                next++;
+            } else {
+                result = result + ch;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Approach 2: Two positions, swapping from both ends.
+     *
+     * Idea: &quot;left&quot; starts at the first character and &quot;right&quot; at the last.
+     * If left is on a special character, move left forward. If right is on a
+     * special character, move right back. Only when BOTH are on letters do we
+     * swap them and move both. That way the special characters are never
+     * touched.
+     *
+     * A String cannot be changed in place, so we work on a char array and
+     * turn it back into a String at the end.
+     */
+    public static String usingTwoPointers(String text) {
+        char[] ch = text.toCharArray();
+
+        int left = 0;
+        int right = ch.length - 1;
+
+        while (left &lt; right) {
+            if (!isLetter(ch[left])) {
+                left++;
+            } else if (!isLetter(ch[right])) {
+                right--;
+            } else {
+                char temp = ch[left];
+                ch[left] = ch[right];
+                ch[right] = temp;
+                left++;
+                right--;
+            }
+        }
+
+        return new String(ch);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;$%^&amp;asdf@!lkj&quot;;
+
+        System.out.println(&quot;Input:            &quot; + input);
+        System.out.println(&quot;Reversed letters: &quot; + usingReversedLetters(input));
+        System.out.println(&quot;Two pointers:     &quot; + usingTwoPointers(input));
+
+        System.out.println();
+        System.out.println(&quot;No letters:  &quot; + usingTwoPointers(&quot;$%^&amp;@!&quot;));
+        System.out.println(&quot;All letters: &quot; + usingTwoPointers(&quot;abcdef&quot;));
+        System.out.println(&quot;With digits: &quot; + usingTwoPointers(&quot;a1b2c3&quot;));
+    }
+}</code></pre></details><details id="reversethelastwordinthesentence" class="prog"><summary><b>Reverse the last word in the sentence</b><span>Reverse only the LAST word of a sentence; every other word stays exactly where it is.</span></summary><p class="filename">ReverseTheLastWordInTheSentence.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+/**
+ * Problem: Reverse only the LAST word of a sentence; every other word
+ * stays exactly where it is.
+ *
+ * Example:
+ *   Input:  &quot;I am the chief&quot;
+ *   Output: &quot;I am the feihc&quot;
+ */
+public class ReverseTheLastWordInTheSentence {
+
+    /**
+     * Approach 1: Reverse the last word with a loop.
+     *
+     * Idea: split the sentence into words, take the last element
+     * (words[words.length - 1]), rebuild it character by character from
+     * the end, and put it back in its slot. String.join() stitches the
+     * sentence back together with spaces between the words.
+     */
+    public static String usingLoop(String sentence) {
+        String[] words = sentence.split(&quot; &quot;);
+
+        String lastWord = words[words.length - 1];
+
+        StringBuilder reversed = new StringBuilder();
+        for (int i = lastWord.length() - 1; i &gt;= 0; i--) {
+            reversed.append(lastWord.charAt(i));
+        }
+
+        words[words.length - 1] = reversed.toString(); // swap the last word in place
+
+        return String.join(&quot; &quot;, words);
+    }
+
+    /**
+     * Approach 2: Same plan, StringBuilder.reverse() shortcut.
+     *
+     * Idea: identical split -&gt; replace -&gt; join flow, but the reversal
+     * itself is the library one-liner. In real code you would write this
+     * version; Approach 1 exists so you understand what reverse() does.
+     */
+    public static String usingStringBuilderReverse(String sentence) {
+        String[] words = sentence.split(&quot; &quot;);
+
+        int lastIndex = words.length - 1;
+        words[lastIndex] = new StringBuilder(words[lastIndex]).reverse().toString();
+
+        return String.join(&quot; &quot;, words);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;I am the chief&quot;;
+
+        System.out.println(&quot;Loop:          &quot; + usingLoop(input));
+        System.out.println(&quot;StringBuilder: &quot; + usingStringBuilderReverse(input));
+    }
+}</code></pre></details><details id="reversethestringwhilepreservingwhitespace" class="prog"><summary><b>Reverse the string while preserving whitespace</b><span>Reverse a string, but every space must stay at its original index. Only the non-space characters get reversed.</span></summary><p class="filename">ReverseTheStringWhilePreservingWhitespace.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+/**
+ * Problem: Reverse a string, but every space must stay at its original
+ * index. Only the non-space characters get reversed.
+ *
+ * Example:
+ *   Input:  &quot;yu gan&quot;     (space at index 2)
+ *   Output: &quot;na guy&quot;     (letters y,u,g,a,n reversed to n,a,g,u,y;
+ *                        the space never leaves index 2)
+ */
+public class ReverseTheStringWhilePreservingWhitespace {
+
+    /**
+     * Approach 1: Reserve the spaces, then fill from the back.
+     *
+     * Idea: two passes over a fresh char[].
+     *   Pass 1: copy each space into its original index, reserving it.
+     *   Pass 2: walk the input left to right, and place each non-space
+     *   character into the result FROM THE END, skipping reserved slots.
+     * Letters land in reverse order, spaces never move.
+     */
+    public static String usingTwoPasses(String text) {
+        char[] chars = text.toCharArray();
+        char[] result = new char[chars.length];
+
+        // Pass 1: reserve the space positions.
+        for (int i = 0; i &lt; chars.length; i++) {
+            if (chars[i] == &#x27; &#x27;) {
+                result[i] = &#x27; &#x27;;
+            }
+        }
+
+        // Pass 2: fill letters from the back, hopping over reserved slots.
+        int fill = chars.length - 1;
+        for (int i = 0; i &lt; chars.length; i++) {
+            if (chars[i] != &#x27; &#x27;) {
+                if (result[fill] == &#x27; &#x27;) {
+                    fill--; // skip the reserved space slot
+                }
+                result[fill] = chars[i];
+                fill--;
+            }
+        }
+
+        return new String(result); // build a String out of a char[]
+    }
+
+    /**
+     * Approach 2: Two pointers swapping towards the middle.
+     *
+     * Idea: left and right pointers start at the two ends of a char[]
+     * copy. Each pointer skips over spaces on its side; when both point
+     * at letters, swap them and step inwards. One pass, no second array.
+     */
+    public static String usingTwoPointers(String text) {
+        char[] chars = text.toCharArray();
+
+        int left = 0;
+        int right = chars.length - 1;
+
+        while (left &lt; right) {
+            if (chars[left] == &#x27; &#x27;) {
+                left++; // spaces stay put — walk past them
+            } else if (chars[right] == &#x27; &#x27;) {
+                right--;
+            } else {
+                char temp = chars[left];
+                chars[left] = chars[right];
+                chars[right] = temp;
+                left++;
+                right--;
+            }
+        }
+
+        return new String(chars);
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;yu gan&quot;;
+
+        System.out.println(&quot;Two passes:   &quot; + usingTwoPasses(input));
+        System.out.println(&quot;Two pointers: &quot; + usingTwoPointers(input));
+    }
+}</code></pre></details><details id="rotatearray" class="prog"><summary><b>Rotate array</b><span>Rotate an array to the RIGHT by k positions — every element moves k steps to the right, and the ones that fall off the end wrap around to the front.</span></summary><p class="filename">RotateArray.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.Arrays;
+
+/**
+ * Problem: Rotate an array to the RIGHT by k positions — every element
+ * moves k steps to the right, and the ones that fall off the end wrap
+ * around to the front.
+ *
+ * Example:
+ *   Input:  [1, 2, 3, 4, 5, 6, 7], k = 3
+ *   Output: [5, 6, 7, 1, 2, 3, 4]
+ *
+ * Java term worth learning: the % (MODULO) operator wraps indexes around.
+ * (i + k) % length always lands back inside the array, no matter how big
+ * k is — that wrap-around IS the rotation.
+ */
+public class RotateArray {
+
+    /**
+     * Approach 1: Place each element at its rotated index.
+     *
+     * Idea: element at index i belongs at index (i + k) % length after
+     * the rotation, so walk the input once and drop every value straight
+     * into its final slot of a fresh array.
+     * We also reduce k with k % length first: rotating by the array
+     * length changes nothing, so k = 9 on a 7-element array is really
+     * just k = 2.
+     */
+    public static int[] usingExtraArray(int[] nums, int k) {
+        int n = nums.length;
+        k = k % n; // rotating by n is a full circle -&gt; same as rotating by 0
+
+        int[] rotated = new int[n];
+        for (int i = 0; i &lt; n; i++) {
+            rotated[(i + k) % n] = nums[i];
+        }
+        return rotated;
+    }
+
+    /**
+     * Approach 2: Three reversals (the clever in-place trick).
+     *
+     * Idea: rotating right by k is the same as:
+     *   1. reverse the WHOLE array     [1,2,3,4,5,6,7] -&gt; [7,6,5,4,3,2,1]
+     *   2. reverse the first k items   -&gt; [5,6,7,4,3,2,1]
+     *   3. reverse the remaining items -&gt; [5,6,7,1,2,3,4]
+     * No extra array needed. The helper reverses a section between two
+     * indexes using the classic swap-the-ends loop.
+     */
+    public static void usingThreeReversals(int[] nums, int k) {
+        int n = nums.length;
+        k = k % n;
+
+        reverse(nums, 0, n - 1);     // step 1: whole array
+        reverse(nums, 0, k - 1);     // step 2: first k elements
+        reverse(nums, k, n - 1);     // step 3: the rest
+    }
+
+    /** Reverse the elements of nums between indexes start and end (inclusive). */
+    private static void reverse(int[] nums, int start, int end) {
+        while (start &lt; end) {
+            int temp = nums[start];
+            nums[start] = nums[end];
+            nums[end] = temp;
+            start++;
+            end--;
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 2, 3, 4, 5, 6, 7 };
+        int k = 3;
+
+        System.out.println(&quot;Extra array:     &quot; + Arrays.toString(usingExtraArray(input, k)));
+
+        int[] inPlace = input.clone();
+        usingThreeReversals(inPlace, k);
+        System.out.println(&quot;Three reversals: &quot; + Arrays.toString(inPlace));
+    }
+}</code></pre></details><details id="stringcompression" class="prog"><summary><b>String compression</b><span>Compress a string with RUN-LENGTH ENCODING — replace every run of repeated characters with the character followed by the run length.</span></summary><p class="filename">StringCompression.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+/**
+ * Problem: Compress a string with RUN-LENGTH ENCODING — replace every run
+ * of repeated characters with the character followed by the run length.
+ *
+ * Example:
+ *   Input:  &quot;aabbbcccddd&quot;
+ *   Output: &quot;a2b3c3d3&quot;
+ */
+public class StringCompression {
+
+    /**
+     * Approach 1: Compare with the previous character.
+     *
+     * Idea: walk the string remembering the previous character and how
+     * many times it has repeated. When the current character DIFFERS,
+     * the run is over — write &quot;previousChar + count&quot; to the result and
+     * restart the count. The final run has no &quot;different&quot; character after
+     * it, so it is written once more after the loop.
+     */
+    public static String usingPreviousChar(String text) {
+        StringBuilder compressed = new StringBuilder();
+
+        char previous = text.charAt(0);
+        int count = 1;
+
+        for (int i = 1; i &lt; text.length(); i++) {
+            char current = text.charAt(i);
+
+            if (current == previous) {
+                count++; // run continues
+            } else {
+                compressed.append(previous).append(count); // run ended -&gt; flush it
+                previous = current;
+                count = 1;
+            }
+        }
+
+        compressed.append(previous).append(count); // flush the final run
+        return compressed.toString();
+    }
+
+    /**
+     * Approach 2: Two pointers — one marks the run, one finds its end.
+     *
+     * Idea: &quot;start&quot; marks the first character of the current run. &quot;scan&quot;
+     * runs ahead until it hits a different character (or the end of the
+     * string). The run length is simply scan - start; write it, then jump
+     * start to where scan stopped. Same result, but you never carry a
+     * separate &quot;previous&quot; variable.
+     */
+    public static String usingTwoPointers(String text) {
+        StringBuilder compressed = new StringBuilder();
+
+        int start = 0;
+        while (start &lt; text.length()) {
+            int scan = start;
+
+            // Move scan to the end of the current run of equal characters.
+            while (scan &lt; text.length() &amp;&amp; text.charAt(scan) == text.charAt(start)) {
+                scan++;
+            }
+
+            int runLength = scan - start;
+            compressed.append(text.charAt(start)).append(runLength);
+
+            start = scan; // next run begins where this one ended
+        }
+
+        return compressed.toString();
+    }
+
+    public static void main(String[] args) {
+        String input = &quot;aabbbcccddd&quot;;
+
+        System.out.println(&quot;Previous char: &quot; + usingPreviousChar(input));
+        System.out.println(&quot;Two pointers:  &quot; + usingTwoPointers(input));
+    }
+}</code></pre></details><details id="triplesum" class="prog"><summary><b>Triple sum</b><span>Find all triplets — groups of three numbers — in an array that add up to a target.</span></summary><p class="filename">TripleSum.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Problem: Find all triplets — groups of three numbers — in an array that
+ * add up to a target.
+ *
+ * Example:
+ *   Input:  [1, 2, 3, 4, 5], target = 6
+ *   Output: [1, 2, 3]
+ *
+ * Note: with repeated values the same triplet can be reported more than
+ * once; in a real task you would collect triplets into a Set to dedupe.
+ */
+public class TripleSum {
+
+    /**
+     * Approach 1: Three nested loops — try every combination.
+     *
+     * Idea: one loop per slot of the triplet. j starts at i + 1 and k at
+     * j + 1, so each combination is checked exactly once and no element
+     * is used twice in the same triplet.
+     */
+    public static void usingThreeLoops(int[] nums, int target) {
+        for (int i = 0; i &lt; nums.length; i++) {
+            for (int j = i + 1; j &lt; nums.length; j++) {
+                for (int k = j + 1; k &lt; nums.length; k++) {
+                    if (nums[i] + nums[j] + nums[k] == target) {
+                        System.out.println(&quot;[&quot; + nums[i] + &quot;, &quot; + nums[j] + &quot;, &quot; + nums[k] + &quot;]&quot;);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Approach 2: Fix one number, then solve a TwoSum for the rest.
+     *
+     * Idea: pick the first number with the outer loop. What remains is a
+     * smaller question: &quot;find two numbers after it that add up to
+     * (target - first)&quot; — and that is exactly the TwoSum problem, solved
+     * here with the same HashSet complement trick as in TwoSum.
+     * Recognizing that a big problem contains a smaller one you already
+     * solved is the real lesson of this file.
+     */
+    public static void usingTwoSumInside(int[] nums, int target) {
+        for (int i = 0; i &lt; nums.length; i++) {
+            int first = nums[i];
+            int remainingTarget = target - first;
+
+            // TwoSum over everything AFTER index i.
+            Set&lt;Integer&gt; seen = new HashSet&lt;&gt;();
+            for (int j = i + 1; j &lt; nums.length; j++) {
+                int second = nums[j];
+                int complement = remainingTarget - second;
+
+                if (seen.contains(complement)) {
+                    System.out.println(&quot;[&quot; + first + &quot;, &quot; + complement + &quot;, &quot; + second + &quot;]&quot;);
+                }
+
+                seen.add(second);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 2, 3, 4, 5 };
+        int target = 6;
+
+        System.out.println(&quot;Three loops:&quot;);
+        usingThreeLoops(input, target);
+
+        System.out.println(&quot;TwoSum inside:&quot;);
+        usingTwoSumInside(input, target);
+    }
+}</code></pre></details><details id="twosum" class="prog"><summary><b>Two sum</b><span>Find all pairs of numbers in an array that add up to a target.</span></summary><p class="filename">TwoSum.java</p><pre><code class="java">package com.sdet.studyplan.medium;
+
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Problem: Find all pairs of numbers in an array that add up to a target.
+ *
+ * Example:
+ *   Input:  [1, 4, 5, -1, 3], target = 4
+ *   Output: pairs [1, 3] and [5, -1]
+ */
+public class TwoSum {
+
+    /**
+     * Approach 1: Check every pair with nested loops.
+     *
+     * Idea: for each number, try adding every number that comes after it
+     * (j starts at i + 1, so we never repeat a pair or add a number to
+     * itself). If the sum matches the target, we found a pair.
+     */
+    public static void usingNestedLoops(int[] nums, int target) {
+        for (int i = 0; i &lt; nums.length; i++) {
+            for (int j = i + 1; j &lt; nums.length; j++) {
+                if (nums[i] + nums[j] == target) {
+                    System.out.println(&quot;[&quot; + nums[i] + &quot;, &quot; + nums[j] + &quot;]&quot;);
+                }
+            }
+        }
+    }
+
+    /**
+     * Approach 2: Remember what you have seen with a HashSet.
+     *
+     * Idea: for the current number, the partner it needs is
+     * (target - number) — its COMPLEMENT. Instead of scanning the array
+     * for that partner, we ask the set &quot;have I already seen the
+     * complement?&quot; Set lookups are instant, so each number needs only one
+     * question instead of a whole inner loop.
+     */
+    public static void usingHashSet(int[] nums, int target) {
+        Set&lt;Integer&gt; seen = new HashSet&lt;&gt;();
+
+        for (int num : nums) {
+            int complement = target - num; // the partner this number needs
+
+            if (seen.contains(complement)) {
+                System.out.println(&quot;[&quot; + complement + &quot;, &quot; + num + &quot;]&quot;);
+            }
+
+            seen.add(num); // remember this number for future lookups
+        }
+    }
+
+    public static void main(String[] args) {
+        int[] input = { 1, 4, 5, -1, 3 };
+        int target = 4;
+
+        System.out.println(&quot;Nested loops:&quot;);
+        usingNestedLoops(input, target);
+
+        System.out.println(&quot;HashSet:&quot;);
+        usingHashSet(input, target);
+    }
+}</code></pre></details>
+<p class="sitenav"><a href="easyarrays.html">&larr; Arrays</a><a href="../../index.html#java">All lessons</a><a href="java8.html">Java 8 &rarr;</a></p>
+</main>
+<script>
+document.getElementById('openall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = true; });
+});
+document.getElementById('shutall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = false; });
+});
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('.chips a');
+  if (!a) return;
+  var d = document.querySelector(a.getAttribute('href'));
+  if (d) d.open = true;
+});
+</script>
+</body>
+</html>

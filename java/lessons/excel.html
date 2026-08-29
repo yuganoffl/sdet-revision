@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Excel with POI &middot; Java</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="java8.html">&larr;</a><a class="tb-home" href="../../index.html#java">Java</a><span class="tb-x"></span></div>
+<main class="sheet">
+<p class="eyebrow">Java &middot; 2 programs</p>
+<h1>Excel with POI</h1>
+<p class="standfirst">Reading a sheet into a data table for a DataProvider. Tap a program to open its code.
+Every one of these is your own, written with plain loops.</p>
+<p class="chips"><a href="#datatable">Data table</a><a href="#readexcel">Read excel</a></p>
+<p class="chips-actions"><button type="button" id="openall">Open all</button>
+<button type="button" id="shutall">Close all</button></p>
+<details id="datatable" class="prog"><summary><b>Data table</b><span>Turn an Excel sheet into a DATA TABLE: a List of Maps, one Map per data row, keyed by the header names.</span></summary><p class="filename">DataTable.java</p><pre><code class="java">package com.sdet.studyplan.excel;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+/**
+ * Turn an Excel sheet into a DATA TABLE: a List of Maps, one Map per
+ * data row, keyed by the header names.
+ *
+ * For Apache.xlsx:
+ *   Row 0 (header): Username | Password
+ *   Row 1:          Balaji   | Sannasi#5835
+ *   Row 2:          Yugan    | 123557
+ *
+ * becomes:
+ *   [ {Username=Balaji, Password=Sannasi#5835},
+ *     {Username=Yugan,  Password=123557} ]
+ *
+ * This is THE standard shape for data-driven testing: hand the list to
+ * a TestNG @DataProvider and each Map becomes one test run — one login
+ * attempt per row, with the code never hardcoding the values.
+ */
+public class DataTable {
+
+    /**
+     * Reads the first sheet of the given .xlsx file and returns one Map
+     * per data row, where each key is the header of that column.
+     */
+    public static List&lt;Map&lt;String, String&gt;&gt; readAsTable(String fileName) throws IOException {
+        List&lt;Map&lt;String, String&gt;&gt; table = new ArrayList&lt;&gt;();
+
+        try (FileInputStream file = new FileInputStream(fileName);
+                XSSFWorkbook workbook = new XSSFWorkbook(file)) {
+
+            XSSFSheet sheet = workbook.getSheetAt(0);
+
+            // DataFormatter gives the text as Excel displays it — without
+            // it, a numeric cell like 123557 reads back as &quot;123557.0&quot;.
+            DataFormatter formatter = new DataFormatter();
+
+            // Step 1: read the header row — it provides the map keys.
+            Row headerRow = sheet.getRow(0);
+            List&lt;String&gt; headers = new ArrayList&lt;&gt;();
+            for (int j = 0; j &lt; headerRow.getPhysicalNumberOfCells(); j++) {
+                headers.add(formatter.formatCellValue(headerRow.getCell(j)));
+            }
+
+            // Step 2: for each data row, pair every cell with its header.
+            // getLastRowNum() is the index of the final row. Looping to
+            // getPhysicalNumberOfRows() instead silently drops trailing rows
+            // whenever the sheet has a blank line in the middle, because the
+            // physical count is smaller than the last index.
+            for (int i = 1; i &lt;= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) {
+                    continue;
+                }
+
+                Map&lt;String, String&gt; rowData = new LinkedHashMap&lt;&gt;();
+                for (int j = 0; j &lt; headers.size(); j++) {
+                    String cellValue = row.getCell(j) == null ? &quot;&quot; : formatter.formatCellValue(row.getCell(j));
+                    rowData.put(headers.get(j), cellValue);
+                }
+                table.add(rowData);
+            }
+        }
+
+        return table;
+    }
+
+    public static void main(String[] args) throws IOException {
+        List&lt;Map&lt;String, String&gt;&gt; table = readAsTable(&quot;Apache.xlsx&quot;);
+
+        // Reading the data back by column name — no magic column indexes.
+        for (Map&lt;String, String&gt; row : table) {
+            System.out.println(&quot;username=&quot; + row.get(&quot;Username&quot;)
+                    + &quot;, password=&quot; + row.get(&quot;Password&quot;));
+        }
+    }
+}</code></pre></details><details id="readexcel" class="prog"><summary><b>Read excel</b><span>Read and print every row of an .xlsx file with Apache POI. The POI vocabulary maps 1:1 to what you see in Excel: Workbook -&gt; the whole file (XSSFWorkbook = .xlsx forma...</span></summary><p class="filename">ReadExcel.java</p><pre><code class="java">package com.sdet.studyplan.excel;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+/**
+ * Read and print every row of an .xlsx file with Apache POI.
+ *
+ * The POI vocabulary maps 1:1 to what you see in Excel:
+ *   Workbook -&gt; the whole file          (XSSFWorkbook = .xlsx format)
+ *   Sheet    -&gt; one tab at the bottom   (XSSFSheet)
+ *   Row      -&gt; one horizontal line     (Row)
+ *   Cell     -&gt; one box in the grid     (Cell)
+ *
+ * Why keep test data in Excel at all? So data can change (new logins,
+ * new environments) without touching the test code.
+ *
+ * try-with-resources note: &quot;try (XSSFWorkbook workbook = ...)&quot; closes
+ * the workbook and the file automatically when the block ends — no
+ * manual close() needed, even if an exception is thrown.
+ */
+public class ReadExcel {
+
+    public static void main(String[] args) throws IOException {
+        Path excelPath = Path.of(&quot;Apache.xlsx&quot;);
+        if (Files.notExists(excelPath)) {
+            throw new IOException(&quot;Excel file not found: &quot; + excelPath.toAbsolutePath());
+        }
+
+        try (FileInputStream file = new FileInputStream(excelPath.toFile());
+                XSSFWorkbook workbook = new XSSFWorkbook(file)) {
+
+            XSSFSheet sheet = workbook.getSheetAt(0); // first tab
+
+            // DataFormatter renders a cell the way Excel DISPLAYS it.
+            // We need it because numeric cells come back as doubles:
+            // cell.toString() on the password 123557 would print
+            // &quot;123557.0&quot; — a wrong password in a real login test!
+            DataFormatter formatter = new DataFormatter();
+
+            // getPhysicalNumberOfRows counts only rows that actually have
+            // content — safer than getLastRowNum() for typical files.
+            int rowCount = sheet.getPhysicalNumberOfRows();
+
+            // Start at row 1: row 0 is the header (Username | Password).
+            for (int i = 1; i &lt; rowCount; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) {
+                    continue; // blank line inside the sheet
+                }
+
+                for (int j = 0; j &lt; row.getPhysicalNumberOfCells(); j++) {
+                    Cell cell = row.getCell(j);
+                    if (cell != null) {
+                        System.out.print(formatter.formatCellValue(cell) + &quot; &quot;);
+                    }
+                }
+                System.out.println();
+            }
+        }
+    }
+}</code></pre></details>
+<p class="sitenav"><a href="java8.html">&larr; Java 8</a><a href="../../index.html#java">All lessons</a></p>
+</main>
+<script>
+document.getElementById('openall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = true; });
+});
+document.getElementById('shutall').addEventListener('click', function () {
+  document.querySelectorAll('details.prog').forEach(function (d) { d.open = false; });
+});
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('.chips a');
+  if (!a) return;
+  var d = document.querySelector(a.getAttribute('href'));
+  if (d) d.open = true;
+});
+</script>
+</body>
+</html>

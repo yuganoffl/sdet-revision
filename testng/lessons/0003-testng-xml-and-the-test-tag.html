@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3 · testng.xml and the &lt;test&gt; tag</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0002-the-lifecycle-annotations.html">&larr;</a><a class="tb-home" href="../../index.html#testng">TestNG</a><a class="tb-next" href="0004-dataprovider-and-excel.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 03 &middot; TestNG</p>
+<h1>testng.xml, and what <code>&lt;test&gt;</code> really means</h1>
+<p class="standfirst">One file decides which tests run and how. Lesson 2 left
+<code>@BeforeTest</code> as a word you had memorised. This lesson makes you watch it
+fire once, then twice, with the Java untouched.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. <code>testng.xml</code> is the file that says which classes run and how.<br>
+  2. A <code>&lt;test&gt;</code> tag in it is a <strong>named bundle of classes</strong>,
+  not a test case.<br>
+  3. <code>@BeforeTest</code> fires once per bundle. Two bundles, two firings.<br>
+  4. How many bundles there are is decided in the XML, never in the Java.</p>
+</div>
+
+<p>Everything below is you proving point 3 to yourself on your own machine. Read the
+first two sections, then start typing at Step 1.</p>
+
+<h2>Why the file exists</h2>
+
+<p>So far you have run tests with <code>mvn test -Dtest=PalindromeTest</code>. Fine
+for one class. It gives you no way to say the things a real suite has to say:</p>
+
+<ul>
+  <li>run these six classes, not those forty</li>
+  <li>run the smoke tests now, the slow ones tonight</li>
+  <li>run this bundle against staging, that bundle against production</li>
+  <li>run four classes at once, in separate threads</li>
+</ul>
+
+<p><code>testng.xml</code> is where you say them. It lives in version control next to
+the code, so how the suite runs gets reviewed like any other file. Your repo already
+has a tiny one, <code>grouping.xml</code> in the project root.</p>
+
+<h2>The four tags</h2>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd"&gt;
+
+<span class="k">&lt;suite</span> name="ScopeDemo"<span class="k">&gt;</span>                    <span class="c">the whole run</span>
+  <span class="k">&lt;test</span> name="BothClassesTogether"<span class="k">&gt;</span>           <span class="c">one named bundle</span>
+    <span class="k">&lt;classes&gt;</span>                              <span class="c">just a wrapper</span>
+      <span class="k">&lt;class</span> name="com.sdet.studyplan.testng.AlphaTest"<span class="k">/&gt;</span>
+      <span class="k">&lt;class</span> name="com.sdet.studyplan.testng.BetaTest"<span class="k">/&gt;</span>
+    <span class="k">&lt;/classes&gt;</span>
+  <span class="k">&lt;/test&gt;</span>
+<span class="k">&lt;/suite&gt;</span></code></pre>
+
+<p>You have already met three of these, from the other side. They are the same boxes
+as lesson 2's diagram, written down:</p>
+
+<div class="scroll-x">
+<table>
+  <caption>XML tag to annotation</caption>
+  <tr><th>Tag</th><th>What it is</th><th>Wrapped by</th></tr>
+  <tr><td><code>&lt;suite&gt;</code></td><td>the whole run, one per file</td><td><code>@BeforeSuite</code> / <code>@AfterSuite</code></td></tr>
+  <tr><td><code>&lt;test&gt;</code></td><td>a named bundle of classes</td><td><code>@BeforeTest</code> / <code>@AfterTest</code></td></tr>
+  <tr><td><code>&lt;class&gt;</code></td><td>one Java class, fully qualified</td><td><code>@BeforeClass</code> / <code>@AfterClass</code></td></tr>
+  <tr><td>(a method)</td><td>one <code>@Test</code></td><td><code>@BeforeMethod</code> / <code>@AfterMethod</code></td></tr>
+</table>
+</div>
+
+<p>Class names carry the full package because TestNG loads them by name at runtime.
+A bare <code>AlphaTest</code> has nothing to resolve against, and the run dies with a
+class-not-found error.</p>
+
+<div class="warn">
+  <span class="lbl">The worst-named thing in TestNG</span>
+  <p>A <code>&lt;test&gt;</code> tag is <strong>not a test</strong>. It is closer to a
+  chapter heading. One <code>&lt;test&gt;</code> tag routinely holds twenty classes and
+  four hundred <code>@Test</code> methods. The word means one thing in Java and a
+  different thing in the XML, and TestNG never fixes the collision. Read the tag as
+  <em>bundle</em> every time you see it.</p>
+</div>
+
+<h2>The experiment</h2>
+
+<p>You are going to run the same three Java files twice. Between the runs you change
+nothing but the XML, and the setup code goes from running once to running twice.</p>
+
+<h3 class="step"><span class="n">Step 1</span> Write the shared base class</h3>
+
+<p>Putting setup in a base class that test classes extend is how nearly every real
+framework does it, so this is worth typing rather than skimming. The name has no
+<code>Test</code> in it, which is what keeps Maven from trying to run it as a class of
+its own.</p>
+
+<p class="filename">src/test/java/com/sdet/studyplan/testng/BaseLifecycle.java</p>
+<pre><code><span class="k">package</span> com.sdet.studyplan.testng;
+
+<span class="k">import</span> org.testng.annotations.*;
+
+<span class="k">public class</span> BaseLifecycle {
+
+    <span class="k">private</span> String who() { <span class="k">return</span> getClass().getSimpleName(); }
+
+    <span class="k">@BeforeSuite</span> <span class="k">public void</span> bs() { System.out.println(<span class="s">"@BeforeSuite  for "</span> + who()); }
+    <span class="k">@BeforeTest</span>  <span class="k">public void</span> bt() { System.out.println(<span class="s">"@BeforeTest   for "</span> + who()); }
+    <span class="k">@BeforeClass</span> <span class="k">public void</span> bc() { System.out.println(<span class="s">"  @BeforeClass  "</span> + who()); }
+    <span class="k">@AfterTest</span>   <span class="k">public void</span> at() { System.out.println(<span class="s">"@AfterTest    for "</span> + who()); }
+}</code></pre>
+
+<p class="aside"><code>who()</code> prints the subclass name, because
+<code>getClass()</code> on an inherited method returns the real object's class. That
+is how you will tell which class each line came from.</p>
+
+<h3 class="step"><span class="n">Step 2</span> Write two test classes that inherit it</h3>
+
+<p>They add nothing but tests. All four configuration methods come from the parent.</p>
+
+<div class="sbs">
+  <div>
+    <p class="filename">.../testng/AlphaTest.java</p>
+<pre><code><span class="k">package</span> com.sdet.studyplan.testng;
+
+<span class="k">import</span> org.testng.annotations.Test;
+
+<span class="k">public class</span> AlphaTest
+        <span class="k">extends</span> BaseLifecycle {
+
+    <span class="k">@Test</span> <span class="k">public void</span> alphaOne() {
+        System.out.println(<span class="s">"      &gt;&gt;&gt; AlphaTest.alphaOne"</span>);
+    }
+
+    <span class="k">@Test</span> <span class="k">public void</span> alphaTwo() {
+        System.out.println(<span class="s">"      &gt;&gt;&gt; AlphaTest.alphaTwo"</span>);
+    }
+}</code></pre>
+  </div>
+  <div>
+    <p class="filename">.../testng/BetaTest.java</p>
+<pre><code><span class="k">package</span> com.sdet.studyplan.testng;
+
+<span class="k">import</span> org.testng.annotations.Test;
+
+<span class="k">public class</span> BetaTest
+        <span class="k">extends</span> BaseLifecycle {
+
+    <span class="k">@Test</span> <span class="k">public void</span> betaOne() {
+        System.out.println(<span class="s">"      &gt;&gt;&gt; BetaTest.betaOne"</span>);
+    }
+}</code></pre>
+  </div>
+</div>
+
+<h3 class="step"><span class="n">Step 3</span> Run them in one bundle</h3>
+
+<p>Save the XML from the top of this lesson as <code>one-test.xml</code> in the
+project root. Two classes, one <code>&lt;test&gt;</code> tag. Then run:</p>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=one-test.xml</code></pre>
+
+<h3 class="step"><span class="n">Step 4</span> Split them into two bundles</h3>
+
+<p>Same Java, untouched. Save this as <code>two-tests.xml</code> and run it. The only
+difference is that each class now sits in its own <code>&lt;test&gt;</code> tag.</p>
+
+<p class="filename">two-tests.xml</p>
+<pre><code><span class="k">&lt;suite</span> name="ScopeDemo"<span class="k">&gt;</span>
+  <span class="k">&lt;test</span> name="AlphaOnly"<span class="k">&gt;</span>
+    <span class="k">&lt;classes&gt;&lt;class</span> name="com.sdet.studyplan.testng.AlphaTest"<span class="k">/&gt;&lt;/classes&gt;</span>
+  <span class="k">&lt;/test&gt;</span>
+  <span class="k">&lt;test</span> name="BetaOnly"<span class="k">&gt;</span>
+    <span class="k">&lt;classes&gt;&lt;class</span> name="com.sdet.studyplan.testng.BetaTest"<span class="k">/&gt;&lt;/classes&gt;</span>
+  <span class="k">&lt;/test&gt;</span>
+<span class="k">&lt;/suite&gt;</span></code></pre>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=two-tests.xml</code></pre>
+
+<h2>The two outputs, side by side</h2>
+
+<div class="sbs">
+  <div>
+    <p class="cap">one-test.xml &middot; 1 bundle</p>
+<pre><code>@BeforeSuite  for AlphaTest
+<span class="hl">@BeforeTest   for AlphaTest</span>
+  @BeforeClass  AlphaTest
+      &gt;&gt;&gt; AlphaTest.alphaOne
+      &gt;&gt;&gt; AlphaTest.alphaTwo
+  @BeforeClass  BetaTest
+      &gt;&gt;&gt; BetaTest.betaOne
+
+
+<span class="hl">@AfterTest    for AlphaTest</span></code></pre>
+  </div>
+  <div>
+    <p class="cap">two-tests.xml &middot; 2 bundles</p>
+<pre><code>@BeforeSuite  for BetaTest
+<span class="hl">@BeforeTest   for AlphaTest</span>
+  @BeforeClass  AlphaTest
+      &gt;&gt;&gt; AlphaTest.alphaOne
+      &gt;&gt;&gt; AlphaTest.alphaTwo
+<span class="hl">@AfterTest    for AlphaTest</span>
+<span class="hl">@BeforeTest   for BetaTest</span>
+  @BeforeClass  BetaTest
+      &gt;&gt;&gt; BetaTest.betaOne
+<span class="hl">@AfterTest    for BetaTest</span></code></pre>
+  </div>
+</div>
+
+<p>Count the highlighted lines. That is the entire finding.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>How often each one fired</caption>
+  <tr><th>Method</th><th>1 bundle</th><th>2 bundles</th><th>Because</th></tr>
+  <tr><td><code>@BeforeSuite</code></td><td>1&times;</td><td>1&times;</td><td>one <code>&lt;suite&gt;</code> tag either way</td></tr>
+  <tr><td><code>@BeforeTest</code></td><td>1&times;</td><td><strong>2&times;</strong></td><td>one firing per <code>&lt;test&gt;</code> tag</td></tr>
+  <tr><td><code>@BeforeClass</code></td><td>2&times;</td><td>2&times;</td><td>two classes either way</td></tr>
+</table>
+</div>
+
+<div class="win">
+  <span class="lbl">There it is</span>
+  <p>Identical Java, different firing count. Nothing in the Java decided that. The XML
+  did. <code>@BeforeTest</code> fires once per <code>&lt;test&gt;</code> tag, and the
+  number of tags is a decision you make in a file.</p>
+</div>
+
+<h3>Two smaller things in that output</h3>
+
+<p><strong><code>@BeforeSuite</code> ran once in both runs</strong>, even though two
+classes inherit it. Scope decides how often a configuration method runs. The number of
+classes that can see it changes nothing.</p>
+
+<p><strong>It said <code>AlphaTest</code> in one run and <code>BetaTest</code> in the
+other.</strong> TestNG picked an arbitrary instance to run the suite-level method on.
+So never write <code>@BeforeSuite</code> code that cares which class it hangs off.</p>
+
+<h2>What people use <code>&lt;test&gt;</code> tags for</h2>
+
+<p>Now that you can see the mechanism, the design makes sense. A
+<code>&lt;test&gt;</code> tag says <em>these classes belong together and share a
+setup</em>.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>Real uses</caption>
+  <tr><th>Want</th><th>Shape</th></tr>
+  <tr><td>run the same classes on Chrome and on Firefox</td><td>two <code>&lt;test&gt;</code> tags, same classes, a different <code>&lt;parameter&gt;</code> in each</td></tr>
+  <tr><td>one browser shared by twenty related classes</td><td>one <code>&lt;test&gt;</code> tag, browser opened in <code>@BeforeTest</code></td></tr>
+  <tr><td>smoke suite and regression suite in one file</td><td>two <code>&lt;test&gt;</code> tags with different group filters</td></tr>
+  <tr><td>run two bundles at the same time</td><td><code>&lt;suite parallel="tests"&gt;</code>, one thread per <code>&lt;test&gt;</code> tag</td></tr>
+</table>
+</div>
+
+<p>That last row is why the scope exists at all. In lesson 6,
+<code>parallel="tests"</code> gives each <code>&lt;test&gt;</code> tag its own thread,
+which makes the tag the unit of isolation.</p>
+
+<h2>The suite file TestNG writes for you</h2>
+
+<p>One more thing falls out of "the suite is a file". If the suite is just a file,
+TestNG can write one. After any run with failures it does exactly that, and the file
+contains only the tests that failed. Rerunning them is then a matter of pointing at
+it.</p>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=target/surefire-reports/testng-failed.xml</code></pre>
+
+<div class="warn">
+  <span class="lbl">Where the file actually is</span>
+  <p>Nearly every tutorial says <code>test-output/testng-failed.xml</code>. That is
+  right when you launch from an IDE or plain TestNG. Through Maven, Surefire
+  redirects TestNG's output, so on this project it lands in
+  <code>target/surefire-reports/testng-failed.xml</code>, with a per-suite copy under
+  <code>target/surefire-reports/&lt;SuiteName&gt;/</code>. Look in the wrong place and
+  you conclude the feature does not exist.</p>
+</div>
+
+<p>Here is what a run of four methods, two of them failing, produced:</p>
+
+<pre><code><span class="k">&lt;suite</span> name="Failed suite [FailedDemo]"<span class="k">&gt;</span>
+  <span class="k">&lt;test</span> thread-count="5" name="AllFour(failed)"<span class="k">&gt;</span>
+    <span class="k">&lt;classes&gt;</span>
+      <span class="k">&lt;class</span> name="com.sdet.studyplan.testng.FlakyDemoTest"<span class="k">&gt;</span>
+        <span class="hl">&lt;methods&gt;</span>
+          <span class="hl">&lt;include name="failsTwo"/&gt;</span>
+          <span class="hl">&lt;include name="failsOne"/&gt;</span>
+        <span class="hl">&lt;/methods&gt;</span>
+      <span class="k">&lt;/class&gt;</span>
+    <span class="k">&lt;/classes&gt;</span>
+  <span class="k">&lt;/test&gt;</span>
+<span class="k">&lt;/suite&gt;</span></code></pre>
+
+<p>Same four tags you already know, plus one new pair.
+<code>&lt;methods&gt;</code> with <code>&lt;include&gt;</code> narrows a
+<code>&lt;class&gt;</code> down to named methods. You can write it by hand any time you
+want to run one specific test out of a large class. There is an
+<code>&lt;exclude&gt;</code> that does the opposite.</p>
+
+<h3>Skipped tests come along too</h3>
+
+<p>This is the part people get wrong in interviews. The file is not "the failures". It
+is "everything that was not proven to pass".</p>
+
+<p>A chain of three, where <code>login</code> fails and the other two depend on it:</p>
+
+<div class="sbs">
+  <div>
+    <p class="cap">the run</p>
+<pre><code><span class="k">@Test</span> login()      <span class="c">FAIL</span>
+<span class="k">@Test</span> addToCart() <span class="c">SKIP</span>
+<span class="k">@Test</span> checkout()  <span class="c">SKIP</span>
+<span class="k">@Test</span> unrelated() <span class="c">PASS</span>
+
+<span class="c">1 failure, 2 skipped</span></code></pre>
+  </div>
+  <div>
+    <p class="cap">what it wrote</p>
+<pre><code><span class="k">&lt;methods&gt;</span>
+  <span class="k">&lt;include name="login"/&gt;</span>
+  <span class="k">&lt;include name="checkout"/&gt;</span>
+  <span class="k">&lt;include name="addToCart"/&gt;</span>
+<span class="k">&lt;/methods&gt;</span>
+
+
+<span class="c">unrelated() left out</span></code></pre>
+  </div>
+</div>
+
+<p>All three skipped-or-failed methods are in. The one that passed is not. A test
+skipped because its prerequisite broke never ran, so it has proven nothing and belongs
+in the rerun.</p>
+
+<div class="note">
+  <span class="lbl">Two rough edges</span>
+  <p>The file is overwritten on every failing run, so copy it elsewhere if you need to
+  keep it. And rerunning it feeds its own name back through the generator, so a second
+  round gives you <code>Failed suite [Failed suite [FailedDemo]]</code> and a tag named
+  <code>AllFour(failed)(failed)</code>. Harmless, but it looks broken the first time
+  you see it in a report.</p>
+</div>
+
+<h3>Not the same as retrying a flaky test</h3>
+
+<p>If someone asks "how do you handle flaky tests", <code>testng-failed.xml</code> is
+the wrong answer, because it needs you to start a second run by hand. The answer there
+is <code>IRetryAnalyzer</code>: you implement <code>retry(ITestResult)</code>, return
+<code>true</code> for up to N attempts, and TestNG reruns the method inside the
+original run before deciding it failed. That is lesson 7, with listeners.</p>
+
+<p>Two sentences, if you get asked in an interview. <em>TestNG writes a
+<code>testng-failed.xml</code> after any failing run, holding the failed methods plus
+anything skipped because it depended on them, and you rerun by pointing your suite file
+parameter at it. For flakiness you use an <code>IRetryAnalyzer</code> instead, so the
+retry happens inside the original run.</em></p>
+
+<h2>Check yourself</h2>
+
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="One tag, one firing, no matter how many classes sit inside it or how many of them inherit the method."
+  data-no="Count the tags, not the classes. A @BeforeTest method fires once for each <test> tag it belongs to, so eight classes in one tag still means one firing.">
+  <p class="q">Eight classes all extend a base holding one <code>@BeforeTest</code>
+  method. All eight sit inside a single <code>&lt;test&gt;</code> tag. How many times
+  does that method run?</p>
+  <button class="opt">Eight times, once for each of the classes</button>
+  <button class="opt">One time, because there is one tag</button>
+  <button class="opt">Two times, once opening and once closing</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="A <test> tag names a bundle of classes to run together. The count of @Test methods inside it is unrelated and usually much larger."
+  data-no="A <test> tag has nothing to do with a single test method. It is a named bundle of classes, and it commonly holds hundreds of @Test methods.">
+  <p class="q">Your suite XML has three <code>&lt;test&gt;</code> tags. What does
+  that tell you about the run?</p>
+  <button class="opt">Exactly three test methods will be executed</button>
+  <button class="opt">Three assertions will be checked in total</button>
+  <button class="opt">Three named bundles of classes will run</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="Class names in testng.xml are loaded by reflection, so they must be fully qualified with the package."
+  data-no="TestNG loads these classes by name through reflection. A bare class name has no package to resolve against, so the class is not found.">
+  <p class="q">Why must <code>&lt;class name="..."/&gt;</code> use
+  <code>com.sdet.studyplan.testng.AlphaTest</code> rather than just
+  <code>AlphaTest</code>?</p>
+  <button class="opt">TestNG loads the class by its full name</button>
+  <button class="opt">The DTD rejects any name under five characters</button>
+  <button class="opt">Maven needs the package to compile the class</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="It holds everything that was not proven to pass, so a test skipped because its prerequisite failed is included alongside the failure itself."
+  data-no="It is not only the failures. A test that was skipped because the method it depends on failed never ran, so it has proven nothing, and TestNG includes it in the rerun file too.">
+  <p class="q">A run has one failure, two tests skipped because they depended on it, and
+  nine passes. How many methods appear in <code>testng-failed.xml</code>?</p>
+  <button class="opt">One, only the method that actually failed</button>
+  <button class="opt">Three, the failure and the two skipped</button>
+  <button class="opt">Twelve, the whole run is written out again</button>
+</div>
+
+<h2>Before the next lesson</h2>
+
+<p>Write your own <code>testng.xml</code> in the project root, with two
+<code>&lt;test&gt;</code> tags in it:</p>
+
+<ul>
+  <li>name the first <code>Palindromes</code>, give it <code>PalindromeTest</code></li>
+  <li>name the second <code>Samples</code>, give it the <code>SampleTest</code> class
+  already in your repo</li>
+  <li>run <code>mvn test -Dsurefire.suiteXmlFiles=testng.xml</code></li>
+  <li>open <code>target/surefire-reports/index.html</code> and find both tag names</li>
+</ul>
+
+<p>Then break something on purpose. Change one expected value in
+<code>PalindromeTest</code> so the assertion fails, rerun the suite, and finish with:</p>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=target/surefire-reports/testng-failed.xml</code></pre>
+
+<p>Read the <code>Tests run:</code> count on that second run. It should be 1, not the
+whole suite. Then put the assertion back.</p>
+
+<p>TestNG writes that HTML report on every run. It is what interviewers mean when they
+ask "how do you report results".</p>
+
+<p>Lesson 4 is <code>@DataProvider</code>: running one test method twenty times with
+twenty different inputs. It is the most asked-about TestNG feature, and it is where
+your <code>Apache.xlsx</code> file finally becomes useful.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Read <a href="https://testng.org/index.html#_testng_xml">testng.xml</a> in the
+  official documentation. Skim the full DTD listing rather than studying it. You want
+  to know what is available, not to memorise it.</p>
+
+  <h3>Reference card</h3>
+  <p><a href="../reference/annotations-and-lifecycle.html">Annotations and lifecycle</a>
+  &mdash; now makes full sense, including the <code>&lt;test&gt;</code> row.</p>
+
+  <h3>Stuck on anything?</h3>
+  <p>Ask me. Worth asking: "when would I use more than one <code>&lt;suite&gt;</code>
+  file?" It leads straight into how CI pipelines actually invoke this.</p>
+
+  <p class="nav">
+    <a href="0002-the-lifecycle-annotations.html">&larr; Lesson 2</a>
+    Mission
+    <a href="0004-dataprovider-and-excel.html">Lesson 4 &rarr; @DataProvider</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0002-the-lifecycle-annotations.html">&larr; Lesson 2</a><a href="../../index.html#testng">All lessons</a><a href="0004-dataprovider-and-excel.html">Lesson 4 &rarr;</a></p>
+</main>
+</body>
+</html>

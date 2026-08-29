@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5 · Controlling execution</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0004-dataprovider-and-excel.html">&larr;</a><a class="tb-home" href="../../index.html#testng">TestNG</a><a class="tb-next" href="0006-groups-and-parallel.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 05 &middot; TestNG</p>
+<h1>Controlling execution</h1>
+<p class="standfirst">Which test runs first, what happens to the rest when one breaks,
+and the five <code>@Test</code> attributes that control a single method. Short lesson,
+heavy on interview questions.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. <code>priority</code> decides <strong>order</strong>. It protects nothing.<br>
+  2. <code>dependsOnMethods</code> decides <strong>whether a test runs at all</strong>.
+  A failed prerequisite means the dependent is <em>skipped</em>, not failed.<br>
+  3. Skipped and failed are different verdicts, and knowing why is the interview
+  question.<br>
+  4. <code>timeOut</code>, <code>expectedExceptions</code>, <code>enabled</code> and
+  <code>invocationCount</code> each control one method.</p>
+</div>
+
+<p>Two files in your repo run everything below:
+<code>ExecutionOrderTest.java</code> and <code>TestAttributesTest.java</code>.</p>
+
+<h2>Two problems that look like one</h2>
+
+<p>Lesson 2 showed that TestNG makes no promise about method order. Sooner or later
+that hurts, and people reach for <code>priority</code> to fix it. Half the time they
+have the wrong tool, because there are two separate problems here.</p>
+
+<p><strong>Ordering.</strong> Run the smoke check before the long one. Nothing breaks
+if you get it wrong, the report just reads oddly. That is
+<code>priority</code>.</p>
+
+<p><strong>Protection.</strong> Do not attempt the checkout test if login failed,
+because a checkout failure caused by a broken login is a lie in your report. That is
+<code>dependsOnMethods</code>.</p>
+
+<p>Use the ordering tool for the protection job and you get a report full of failures
+that all trace back to one real bug.</p>
+
+<h2>priority</h2>
+
+<pre><code><span class="k">@Test</span>(priority = -5) <span class="k">public void</span> runsFirst()  { ... }
+<span class="k">@Test</span>               <span class="k">public void</span> noPriority() { ... }   <span class="c">defaults to 0</span>
+<span class="k">@Test</span>(priority = 3)  <span class="k">public void</span> runsLast()   { ... }</code></pre>
+
+<p>Lower numbers first. Negatives are legal and useful, because they let you push a
+method ahead of the default without renumbering everything else. Two methods with the
+same priority run in an order TestNG does not define, so never rely on a tie.</p>
+
+<div class="warn">
+  <span class="lbl">The part nobody mentions</span>
+  <p><code>priority</code> sorts methods <strong>within a class</strong>. It does not
+  interleave across classes. I ran two classes inside one <code>&lt;test&gt;</code> tag,
+  with priorities deliberately crossing over:</p>
+<pre><code>  priority -5        <span class="c">class A, all of it first</span>
+  no priority (0)
+  priority 1
+  priority 3
+  [B] priority 0     <span class="c">class B, only now</span>
+  [B] priority 2</code></pre>
+  <p>Class B's <code>priority 0</code> did not jump ahead of class A's
+  <code>priority 3</code>. Class order comes from the order you list them in
+  <code>testng.xml</code>, which TestNG honours because <code>preserve-order</code>
+  defaults to true. I reversed the two lines in the XML and the whole output flipped.
+  So: XML decides class order, <code>priority</code> decides method order inside each
+  class.</p>
+</div>
+
+<h3>priority protects nothing</h3>
+
+<p>This is the trap. A lower-priority method that fails does not stop the ones after
+it:</p>
+
+<pre><code>  priorityFirstFails      <span class="c">FAILED</span>
+  priorityRunsAnyway  <span class="hl">&lt;-- still ran</span></code></pre>
+
+<p>Which is correct behaviour. <code>priority</code> is a sort key, nothing more. If
+you wanted the second one held back, you wanted a dependency.</p>
+
+<h2>dependsOnMethods</h2>
+
+<p>Flip <code>BREAK_LOGIN</code> to <code>true</code> at the top of
+<code>ExecutionOrderTest.java</code> and rerun. Same seven tests, both times.</p>
+
+<div class="sbs">
+  <div>
+    <p class="cap">BREAK_LOGIN = false</p>
+<pre><code>  priority -5
+  login
+  addToCart
+  checkout
+  cleanupAnyway (alwaysRun)
+  no priority (0)
+  priority 3
+
+Tests run: 7
+Failures: 0, <span class="hl">Skipped: 0</span></code></pre>
+  </div>
+  <div>
+    <p class="cap">BREAK_LOGIN = true</p>
+<pre><code>  priority -5
+  login
+  <span class="c">addToCart never ran</span>
+  <span class="c">checkout never ran</span>
+  cleanupAnyway (alwaysRun)
+  no priority (0)
+  priority 3
+
+Tests run: 7
+Failures: 1, <span class="hl">Skipped: 2</span></code></pre>
+  </div>
+</div>
+
+<p>One real failure. Two skips. <code>checkout</code> depends on
+<code>addToCart</code>, which depends on <code>login</code>, so the whole chain came
+down from one broken link.</p>
+
+<div class="win">
+  <span class="lbl">Why skipped and not failed</span>
+  <p>A skipped test <strong>never ran</strong>. It has proven nothing, good or bad.
+  Reporting it as a failure would claim you found three bugs when you found one. This
+  is the answer interviewers want, and it is why
+  <code>testng-failed.xml</code> from lesson 3 contains skipped tests alongside failed
+  ones: both still need proving.</p>
+</div>
+
+<h3>alwaysRun</h3>
+
+<p><code>cleanupAnyway</code> also depends on <code>login</code>, and it ran in both
+columns:</p>
+
+<pre><code><span class="k">@Test</span>(dependsOnMethods = <span class="s">"login"</span>, alwaysRun = <span class="k">true</span>)
+<span class="k">public void</span> cleanupAnyway() { ... }</code></pre>
+
+<p><code>alwaysRun = true</code> turns a hard dependency into a soft one: keep the
+ordering, drop the skipping. It is for teardown-ish work that has to happen whether the
+prerequisite worked or not. The same attribute on a <code>@Before</code> or
+<code>@After</code> method makes the configuration run even when its group is skipped.</p>
+
+<h3>A dependency beats a priority</h3>
+
+<p>Give a dependent method an earlier priority than the thing it depends on and TestNG
+ignores the priority:</p>
+
+<pre><code><span class="k">@Test</span>(priority = 5) prerequisite()
+<span class="k">@Test</span>(priority = 1, dependsOnMethods = <span class="s">"prerequisite"</span>) dependent()
+
+  prerequisite (priority 5)     <span class="hl">ran first anyway</span>
+  dependent (priority 1)</code></pre>
+
+<p>Dependencies are a constraint. Priority is a preference. Constraints win.</p>
+
+<h3>dependsOnGroups</h3>
+
+<p><code>dependsOnMethods</code> names methods and breaks when you rename one.
+<code>dependsOnGroups</code> names groups instead, which survives refactoring and
+scales past a handful of methods:</p>
+
+<pre><code><span class="k">@Test</span>(groups = <span class="s">"auth"</span>)                     <span class="k">public void</span> login() { ... }
+<span class="k">@Test</span>(groups = <span class="s">"auth"</span>)                     <span class="k">public void</span> tokenRefresh() { ... }
+<span class="k">@Test</span>(dependsOnGroups = <span class="s">"auth"</span>)            <span class="k">public void</span> checkout() { ... }</code></pre>
+
+<p>Now <code>checkout</code> waits for everything tagged <code>auth</code>, wherever it
+lives, even in another class. Groups are lesson 6.</p>
+
+<h2>The @Test attributes</h2>
+
+<p><code>TestAttributesTest.java</code> has one of each, and the whole class passes.
+Run it:</p>
+
+<pre><code>mvn test -Dtest=TestAttributesTest</code></pre>
+
+<pre><code>  finishesInTime
+  runsThreeTimes
+  runsThreeTimes
+  runsThreeTimes
+<span class="hl">Tests run: 6</span>, Failures: 0, Errors: 0, Skipped: 0</code></pre>
+
+<p>Six results from five methods, and one of the five never ran at all. Work out why
+before reading on.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>What each attribute does</caption>
+  <tr><th>Attribute</th><th>Effect</th><th>Use it for</th></tr>
+  <tr><td><code>timeOut = 500</code></td><td>fails the method if it runs past 500ms</td><td>anything that can hang: a wait, an API call, a locator that never resolves</td></tr>
+  <tr><td><code>expectedExceptions = X.class</code></td><td>passes only if X is thrown</td><td>testing that bad input is rejected</td></tr>
+  <tr><td><code>expectedExceptionsMessageRegExp</code></td><td>the message must match too</td><td>making sure it failed for the right reason</td></tr>
+  <tr><td><code>enabled = false</code></td><td>not run, and not counted anywhere</td><td>quarantining a test. Always leave the ticket number next to it</td></tr>
+  <tr><td><code>invocationCount = 3</code></td><td>runs the method three times</td><td>smoking out flakiness. Pair with <code>threadPoolSize</code> for concurrency</td></tr>
+  <tr><td><code>description = "..."</code></td><td>text in the report</td><td>saying what the test proves, in the report your manager reads</td></tr>
+</table>
+</div>
+
+<p>So: five methods, one disabled, one invoked three times. 4 + 3 &minus; 1 = 6.
+<code>enabled = false</code> does not show up as a skip. It vanishes.</p>
+
+<h3>What the failures look like</h3>
+
+<p>Both of these are worth recognising on sight, because the message tells you exactly
+which attribute you tripped.</p>
+
+<div class="sbs">
+  <div>
+    <p class="cap">timeOut exceeded</p>
+<pre><code>ThreadTimeoutException:
+Method ...tooSlow()
+didn't finish within
+the time-out 300</code></pre>
+  </div>
+  <div>
+    <p class="cap">expected exception never thrown</p>
+<pre><code>Method ...expectsButNothing
+Thrown() should have thrown
+an exception of type class
+java.lang.IllegalStateException</code></pre>
+  </div>
+</div>
+
+<div class="warn">
+  <span class="lbl">expectedExceptions is blunt</span>
+  <p>It passes if the exception is thrown <em>anywhere</em> in the method, including
+  from your setup lines before you reach the call you meant to test. When the exact
+  line matters, use a try/catch with an <code>Assert.fail()</code> after the call, or
+  <code>Assert.assertThrows(X.class, () -&gt; ...)</code>, which scopes the expectation
+  to one lambda.</p>
+</div>
+
+<h2>Should tests depend on each other at all?</h2>
+
+<p>Mostly no, and saying so is worth more than reciting the syntax.</p>
+
+<p>Dependencies make tests non-independent. You can no longer run one in isolation,
+the order is fixed so you lose parallelism across the chain, and one flaky prerequisite
+turns green tests yellow. The usual reason people reach for
+<code>dependsOnMethods</code> is that test two needs state that test one created, and
+the better fix for that is a <code>@BeforeMethod</code> that creates the state
+directly.</p>
+
+<p>The legitimate uses are narrow and worth naming, because that is the answer that
+sounds experienced:</p>
+
+<ul>
+  <li>a login or token call that two hundred later tests need, where running them all
+  against a dead session wastes twenty minutes and produces two hundred misleading
+  failures</li>
+  <li>an environment health check that gates the suite</li>
+  <li>genuinely sequential workflows, where "add to cart" without "search" is not a
+  test of anything</li>
+</ul>
+
+<p>The one-sentence version for an interview: <em>I use
+<code>dependsOnMethods</code> for real prerequisites like auth, so a broken login
+reports as one failure and two hundred skips instead of two hundred failures, and I
+avoid it everywhere else because it costs test independence.</em></p>
+
+<h2>Check yourself</h2>
+
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="Priority is only a sort key. It orders methods, it never holds one back because an earlier one failed."
+  data-no="Priority is a sort key and nothing else. The second method runs normally. If you wanted it held back you needed dependsOnMethods.">
+  <p class="q">Method A has <code>priority = 1</code> and fails. Method B has
+  <code>priority = 2</code>. What happens to B?</p>
+  <button class="opt">It is skipped, A failed before it</button>
+  <button class="opt">It runs normally</button>
+  <button class="opt">It fails too, failures cascade</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="One failure and two skips. A skipped test never ran, so it cannot be called a failure."
+  data-no="Only login actually failed. The two that depend on it never ran at all, and a test that never ran is reported as skipped, not failed.">
+  <p class="q"><code>login</code> fails. <code>addToCart</code> depends on it, and
+  <code>checkout</code> depends on <code>addToCart</code>. What does the report say?</p>
+  <button class="opt">3 failures</button>
+  <button class="opt">1 failure, 2 passes</button>
+  <button class="opt">1 failure, 2 skips</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="A dependency is a constraint on execution. Priority is only a preference, so the constraint wins."
+  data-no="Dependencies beat priorities. TestNG has to run the prerequisite first or the dependency means nothing, so the priority is ignored here.">
+  <p class="q"><code>dependent</code> has <code>priority = 1</code> and depends on
+  <code>prerequisite</code>, which has <code>priority = 5</code>. Which runs first?</p>
+  <button class="opt">prerequisite, the dependency wins</button>
+  <button class="opt">dependent, the lower priority wins</button>
+  <button class="opt">Neither, TestNG reports a cycle</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="alwaysRun keeps the ordering but drops the skipping, so the method runs whether the prerequisite passed or not."
+  data-no="alwaysRun does not remove the dependency, it softens it. The ordering still holds, but the method is no longer skipped when the prerequisite fails.">
+  <p class="q">What does <code>alwaysRun = true</code> do on a method that also has
+  <code>dependsOnMethods</code>?</p>
+  <button class="opt">Removes the dependency completely</button>
+  <button class="opt">Keeps the order, stops the skipping</button>
+  <button class="opt">Reruns the method until it passes</button>
+</div>
+
+<h2>Before the next lesson</h2>
+
+<ul>
+  <li>flip <code>BREAK_LOGIN</code> to <code>true</code>, run
+  <code>ExecutionOrderTest</code>, and read the counts:
+  <code>Failures: 1, Skipped: 2</code></li>
+  <li>with it still broken, run
+  <code>mvn test -Dsurefire.suiteXmlFiles=target/surefire-reports/testng-failed.xml</code>
+  and confirm all three chain methods are in there, not just the one that failed</li>
+  <li>flip it back</li>
+  <li>add <code>description = "..."</code> to two tests, rerun, and find your text in
+  <code>target/surefire-reports/index.html</code></li>
+</ul>
+
+<p>That second step closes the loop with lesson 3. It is also the cleanest way to
+prove to yourself that skipped tests are treated as unproven rather than as passes.</p>
+
+<p>Lesson 6 is groups and parallel execution: tagging tests as smoke or regression,
+filtering them from <code>testng.xml</code>, and the four values of the
+<code>parallel</code> attribute. It is where the <code>&lt;test&gt;</code> tag from
+lesson 3 finally pays off.</p>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Read <a href="https://testng.org/index.html#_dependencies">Dependencies</a> and
+  the <code>@Test</code> attribute table in
+  <a href="https://testng.org/index.html#_annotations">Annotations</a>. Both are short.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p><code>ExecutionOrderTest.java</code> and <code>TestAttributesTest.java</code>,
+  both new in <code>src/test/java/com/sdet/studyplan/testng/</code>. Both pass as
+  shipped.</p>
+
+  <h3>Stuck on anything?</h3>
+  <p>Ask me. Worth asking: "what happens if two tests depend on each other?" TestNG
+  detects the cycle and the error message is not obvious the first time you see it.</p>
+
+  <p class="nav">
+    <a href="0004-dataprovider-and-excel.html">&larr; Lesson 4</a>
+    Mission
+    <a href="0006-groups-and-parallel.html">Lesson 6 &rarr; groups and parallel</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0004-dataprovider-and-excel.html">&larr; Lesson 4</a><a href="../../index.html#testng">All lessons</a><a href="0006-groups-and-parallel.html">Lesson 6 &rarr;</a></p>
+</main>
+</body>
+</html>

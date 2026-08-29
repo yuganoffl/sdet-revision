@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 · Your first Selenium test</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><span class="tb-x"></span><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0002-waits.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 01 &middot; Selenium</p>
+<h1>Your first Selenium test</h1>
+<p class="standfirst">Open a browser. Find one thing on the page. Do something to it.
+Check the result. Close the browser. Every Selenium test you ever write is that loop,
+and by the end of this page you will have run it four times.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in four lines</span>
+  <p>1. <code>WebDriver</code> is the browser. <code>By</code> is how you describe what to
+  look for. <code>WebElement</code> is what you got back.<br>
+  2. <code>driver.get(url)</code>, then <code>driver.findElement(By.id("x"))</code>, then
+  act on it. That is the loop.<br>
+  3. <code>findElement</code> never returns null. It throws
+  <code>NoSuchElementException</code> the moment it fails.<br>
+  4. Finish with <code>quit()</code>, never <code>close()</code>.</p>
+</div>
+
+<h2>What is actually running</h2>
+
+<p>This is the part most tutorials skip, and it explains nearly every strange thing
+Selenium does later. Your test is not "in" the browser. Three separate programs are
+talking to each other.</p>
+
+<pre><code>  your TestNG test          chromedriver              Chrome
+  (a Java process)   --->   (a local server)   --->   (the browser)
+                     HTTP                     internal
+
+  driver.findElement(By.id("name"))
+        |
+        +--> POST /session/&lt;id&gt;/element   {"using":"css selector","value":"#name"}
+        &lt;--  {"element-6066-...":"f3e2b1"}      a reference, not the element</code></pre>
+
+<p>Selenium speaks the <a href="https://www.w3.org/TR/webdriver2/">W3C WebDriver
+protocol</a> over HTTP. Three things follow from that picture, and each one saves you
+hours later:</p>
+
+<ul>
+  <li>Every single <code>findElement</code> is a round trip. A loop over a hundred rows
+  makes a hundred network calls, which is why table loops feel slow.</li>
+  <li>A <code>WebElement</code> is a reference id the browser handed you, not a copy of
+  the element. If the page redraws, that id points at nothing and you get
+  <code>StaleElementReferenceException</code>. Lesson 4 deals with it.</li>
+  <li><code>chromedriver</code> is a real operating-system process. Something has to kill
+  it, and that something is <code>quit()</code>.</li>
+</ul>
+
+<h2>The four types you will type every day</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>Learn these four and the rest of the API is variations</caption>
+  <tr><th>Type</th><th>What it is</th><th>You get one by</th></tr>
+  <tr><td><code>WebDriver</code></td><td>The browser session. An interface, so your test
+  never mentions Chrome.</td><td><code>new ChromeDriver(options)</code></td></tr>
+  <tr><td><code>By</code></td><td>A <em>description</em> of how to find something. It has
+  found nothing yet.</td><td><code>By.id("name")</code>, <code>By.cssSelector(..)</code></td></tr>
+  <tr><td><code>WebElement</code></td><td>A handle to one element the browser did
+  find.</td><td><code>driver.findElement(by)</code></td></tr>
+  <tr><td><code>ChromeOptions</code></td><td>Settings handed to Chrome before it
+  starts.</td><td><code>new ChromeOptions()</code></td></tr>
+</table>
+</div>
+
+<p class="aside"><code>By.id("name")</code> on its own does nothing and touches no
+browser. It is a search instruction sitting in a variable. Confusing <code>By</code> with
+<code>WebElement</code> is the single most common beginner mix-up, and interviewers ask
+it on purpose.</p>
+
+<h3 class="step"><span class="n">Step 1</span> The page you will drive</h3>
+
+<p>Your first tests run against a file on your own disk, not a website. A beginner's first
+red test should be red for your reasons, not because a demo server took nine seconds to
+send a stylesheet. I have written it for you.</p>
+
+<p class="filename">src/test/resources/pages/lesson1.html</p>
+<pre><code>&lt;h1 <span class="s">id="title"</span>&gt;Selenium practice page&lt;/h1&gt;
+
+&lt;input <span class="s">id="name"</span> type="text"&gt;
+&lt;button <span class="s">id="greet"</span>&gt;Greet me&lt;/button&gt;
+
+&lt;p <span class="s">id="message"</span>&gt;&lt;/p&gt;      <span class="c">&lt;!-- filled in when the button is clicked --&gt;</span></code></pre>
+
+<p>Open it in Chrome yourself first. Click the button. Whatever you are about to automate,
+do it by hand once, because you cannot write a test for a page you have not seen.</p>
+
+<h3 class="step"><span class="n">Step 2</span> Start and stop the browser</h3>
+
+<p>You know TestNG, so this costs you nothing new. <code>@BeforeMethod</code> opens a
+browser, <code>@AfterMethod</code> shuts it. One fresh browser per test method, which is
+what stops test three inheriting test two's typed-in name.</p>
+
+<p class="filename">src/test/java/com/sdet/studyplan/selenium/FirstSeleniumTest.java</p>
+<pre><code><span class="k">public class</span> FirstSeleniumTest {
+
+    <span class="k">private</span> WebDriver driver;
+
+    <span class="k">@BeforeMethod</span>(alwaysRun = <span class="k">true</span>)
+    <span class="k">public void</span> startBrowser() {
+        ChromeOptions options = <span class="k">new</span> ChromeOptions();
+        options.addArguments(<span class="s">"--headless=new"</span>);   <span class="c">// no visible window</span>
+        options.addArguments(<span class="s">"--window-size=1450,900"</span>);
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+
+        driver = <span class="k">new</span> ChromeDriver(options);   <span class="c">// Chrome starts here</span>
+    }
+
+    <span class="k">@AfterMethod</span>(alwaysRun = <span class="k">true</span>)
+    <span class="k">public void</span> stopBrowser() {
+        <span class="k">if</span> (driver != <span class="k">null</span>) driver.quit();
+    }
+}</code></pre>
+
+<div class="note">
+  <span class="lbl">Notice what is missing</span>
+  <p>No <code>chromedriver</code> download, no <code>System.setProperty</code>, no
+  <code>WebDriverManager</code>. Selenium Manager ships inside Selenium and fetches the
+  right driver itself (<a href="https://www.selenium.dev/documentation/selenium_manager/">docs</a>).
+  It has done that since <strong>4.6</strong>, and most tutorials you will find online
+  predate it. If you say "I use WebDriverManager" on Sunday, the follow-up is "why?"</p>
+</div>
+
+<h3 class="step"><span class="n">Step 3</span> Find something and read it</h3>
+
+<pre><code><span class="k">@Test</span>
+<span class="k">public void</span> readsTheHeadingOffThePage() {
+    driver.get(LOCAL_PAGE);                                <span class="c">// 1. go there</span>
+
+    WebElement heading = driver.findElement(By.id(<span class="s">"title"</span>));  <span class="c">// 2. find it</span>
+
+    Assert.assertEquals(heading.getText(), <span class="s">"Selenium practice page"</span>);  <span class="c">// 3. check</span>
+}</code></pre>
+
+<p>Three lines, and the third one is the only reason this is a test rather than a script.
+Without an assertion the code runs, prints nothing, passes always, and tells you nothing.</p>
+
+<h3 class="step"><span class="n">Step 4</span> Act on the page</h3>
+
+<p>There are really only two verbs at this stage. <code>sendKeys</code> puts text into a
+field. <code>click</code> clicks.</p>
+
+<pre><code><span class="k">@Test</span>
+<span class="k">public void</span> typesAndClicksAndChecksTheResult() {
+    driver.get(LOCAL_PAGE);
+
+    driver.findElement(By.id(<span class="s">"name"</span>)).sendKeys(<span class="s">"Yugan"</span>);
+    driver.findElement(By.id(<span class="s">"greet"</span>)).click();
+
+    WebElement message = driver.findElement(By.id(<span class="s">"message"</span>));
+
+    Assert.assertEquals(message.getText(), <span class="s">"Hello, Yugan!"</span>);
+}</code></pre>
+
+<p class="aside">Note that <code>findElement</code> and the action are chained on one line.
+You only need a <code>WebElement</code> variable when you use the element more than once,
+as with <code>message</code> above.</p>
+
+<h3 class="step"><span class="n">Step 5</span> Meet your first exception</h3>
+
+<p>You asked to cover exceptions properly, so here is the first one, on day one. Ask for
+something that is not on the page:</p>
+
+<pre><code><span class="k">@Test</span>(expectedExceptions = NoSuchElementException.class)
+<span class="k">public void</span> findElementThrowsWhenNothingMatches() {
+    driver.get(LOCAL_PAGE);
+
+    driver.findElement(By.id(<span class="s">"no-such-thing-on-this-page"</span>));
+}</code></pre>
+
+<p>This test passes <em>because</em> the exception is thrown. <code>findElement</code>
+does not return <code>null</code>, does not return an empty object and does not wait
+around. It looks once and throws.</p>
+
+<p>Which leaves the question every beginner then asks, and it is the right question: what
+if the element is genuinely coming, just not yet? That is what waits are for, and it is
+lesson 3. For now, know that <code>NoSuchElementException</code> means one of two things.
+Your locator is wrong, or you looked too early.</p>
+
+<div class="scroll-x">
+<table>
+  <caption>The one pair of methods people confuse here</caption>
+  <tr><th>Call</th><th>Returns</th><th>When nothing matches</th></tr>
+  <tr><td><code>findElement(by)</code></td><td>one <code>WebElement</code></td>
+      <td>throws <code>NoSuchElementException</code></td></tr>
+  <tr><td><code>findElements(by)</code></td><td><code>List&lt;WebElement&gt;</code></td>
+      <td>returns an empty list, throws nothing</td></tr>
+</table>
+</div>
+
+<p>That difference is a stock interview question. It is also the honest way to check
+whether something is absent: <code>findElements(by).isEmpty()</code>, never a
+<code>try/catch</code> around <code>findElement</code>.</p>
+
+<h3 class="step"><span class="n">Step 6</span> Run it</h3>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml</code></pre>
+
+<p>Then run it again and watch Chrome actually do the work:</p>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml -Dheadless=false</code></pre>
+
+<div class="win">
+  <span class="lbl">RESULT ON THIS MACHINE</span>
+  <p><code>Tests run: 4, Failures: 0, Errors: 0, Skipped: 0</code> &mdash; two consecutive
+  runs, 14 seconds each. Four browsers open and close, one per test method. Three tests hit
+  the local file and are instant. The fourth hits a real website and is most of the 14
+  seconds.</p>
+</div>
+
+<div class="warn">
+  <span class="lbl">The scary warning that means nothing</span>
+  <p>Every run prints <code>WARNING: Unable to find CDP implementation matching 151</code>,
+  several times. Nothing is broken. Selenium 4.21 ships DevTools bindings for older Chrome
+  builds than the 151 you have installed, and it says so loudly at startup. It only matters
+  if you call the <code>devTools</code> API, which you never will in these lessons. Ignore
+  it, but recognise it, because it looks like a failure and it is not.</p>
+</div>
+
+<h2>What they will ask you on Sunday</h2>
+
+<div class="scroll-x">
+<table>
+  <caption>Everything in this lesson is a question someone asks</caption>
+  <tr><th>Question</th><th>The answer, in one breath</th></tr>
+  <tr><td>What is WebDriver?</td><td>An interface for driving a real browser over the W3C
+  WebDriver protocol. <code>ChromeDriver</code> is one implementation, which is why I
+  declare the field as <code>WebDriver</code>.</td></tr>
+  <tr><td>Difference between <code>findElement</code> and <code>findElements</code>?</td>
+  <td>One returns a single element and throws <code>NoSuchElementException</code> if it is
+  missing. The other returns a list that is simply empty.</td></tr>
+  <tr><td><code>close()</code> or <code>quit()</code>?</td><td><code>close()</code> shuts
+  the focused window. <code>quit()</code> ends the session and kills the chromedriver
+  process. Teardown uses <code>quit()</code>.</td></tr>
+  <tr><td>How do you manage the chromedriver binary?</td><td>I do not. Selenium Manager
+  has resolved it automatically since 4.6.</td></tr>
+  <tr><td>Why headless?</td><td>Speed and CI. No window means no display server needed on
+  a build agent. I turn it off locally when I need to see what happened.</td></tr>
+</table>
+</div>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="It looks once and gives up. Waiting for something to appear is a separate decision you make on purpose, which is lesson 3."
+  data-no="It never returns null, and it never retries on its own. A plain findElement looks exactly once and throws NoSuchElementException if nothing matched.">
+  <p class="q">What does <code>findElement</code> do when nothing on the page matches?</p>
+  <button class="opt">Returns null so your next line throws NPE</button>
+  <button class="opt">Throws NoSuchElementException immediately</button>
+  <button class="opt">Retries quietly for thirty seconds, then null</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="One leaked process per test, which is how a laptop ends up with forty of them by lunchtime."
+  data-no="They are genuinely different calls. close() shuts the focused window only and leaves the chromedriver process alive. quit() ends the whole session.">
+  <p class="q">Your test ends by calling <code>close()</code> instead of
+  <code>quit()</code>. What is left behind?</p>
+  <button class="opt">The chromedriver process, still running</button>
+  <button class="opt">Nothing at all, the two are the same</button>
+  <button class="opt">A screenshot of the last page seen</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="It is an instruction, not a result. Nothing has been looked up until you hand it to findElement."
+  data-no="A By has not touched the browser yet. It only describes how to search. findElement is what actually goes and looks.">
+  <p class="q">What is a <code>By</code> object?</p>
+  <button class="opt">The element itself, already found for you</button>
+  <button class="opt">The browser window Selenium is driving</button>
+  <button class="opt">A description of how to find an element</button>
+</div>
+
+<h2>Your turn</h2>
+
+<p>Twenty minutes. Do it before lesson 2, and type it rather than pasting it. The muscle
+memory is the point.</p>
+
+<ol>
+  <li>Run the suite both ways, headless and not. Count the browser windows.</li>
+  <li><strong>Write a fifth test yourself.</strong> Type your own name into the field,
+  click the button, and assert on the greeting. It is four lines and you have all four
+  above. This is the first Selenium you will have written.</li>
+  <li><strong>Break it on purpose.</strong> Change <code>By.id("greet")</code> to
+  <code>By.id("Greet")</code> and run again. Read the failure message from top to bottom,
+  because that is the message you will spend the rest of your career reading. Notice that
+  it tells you the locator it tried.</li>
+  <li>Change <code>quit()</code> to <code>close()</code>, run the suite, then run
+  <code>pgrep -fl chromedriver</code> in the terminal. Count what is still alive. Put it
+  back.</li>
+</ol>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p><a href="https://www.selenium.dev/documentation/webdriver/">Selenium WebDriver
+  documentation</a>, written by the maintainers. For this lesson read
+  <a href="https://www.selenium.dev/documentation/webdriver/getting_started/first_script/">Write
+  your first Selenium script</a>. It is eight paragraphs and it is the same shape as what
+  you just ran. Then
+  <a href="https://www.selenium.dev/documentation/selenium_manager/">Selenium Manager</a>,
+  because it is the fastest way to sound current.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p><code>src/test/java/com/sdet/studyplan/selenium/FirstSeleniumTest.java</code>,
+  <code>src/test/resources/pages/lesson1.html</code>, <code>selenium.xml</code>. All green
+  as shipped, verified over two runs.</p>
+
+  <h3>Reference</h3>
+  <p><a href="../reference/driver-setup.html">Driver setup and teardown</a> is the printable
+  version of steps 2 and 6. It runs slightly ahead of you, into a shared base class you have
+  not built yet. Read the top half now and the rest once you reach the framework material.</p>
+
+  <h3>Where this is going</h3>
+  <p><a href="0002-waits.html">Lesson 2</a> is waits, the answer to "the element was not
+  there yet". <a href="0005-exception-handling.html">Lesson 5</a> is the exception
+  catalogue. <a href="0006-locators.html">Lesson 6</a> is locators, because
+  <code>By.id</code> is the easy case and real pages rarely give you one.
+  <a href="0007-element-types.html">Lesson 7</a> is every element type you have to handle:
+  dropdowns, checkboxes, alerts, frames, tables. Lessons
+  <a href="0003-oop-in-your-framework.html">3</a>,
+  <a href="0004-explaining-your-framework.html">4</a>,
+  <a href="0008-screenshots.html">8</a> and
+  <a href="0009-rapid-fire-answers.html">9</a> cover OOP, the framework talk, screenshots
+  and the rapid-fire round.</p>
+
+  <h3>Stuck?</h3>
+  <p>Ask me. I am your teacher here, not just the person who wrote the file, so there is no
+  such thing as a question too small. "Why is it <code>By.id</code> and not
+  <code>getElementById</code>" is a good one. So is "what is headless actually doing".</p>
+
+  <p class="nav">
+    Mission
+    Resources
+    <span><a href="0002-waits.html">Lesson 2: waits &rarr;</a></span>
+  </p>
+</div>
+
+<p class="sitenav"><a href="../../index.html#selenium">All lessons</a><a href="0002-waits.html">Lesson 2 &rarr;</a></p>
+</main>
+</body>
+</html>

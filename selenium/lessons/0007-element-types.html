@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7 · Element types</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/quiz.js"></script>
+<script src="../assets/highlight.js"></script>
+</head>
+<body>
+<div class="topbar"><a class="tb-prev" href="0006-locators.html">&larr;</a><a class="tb-home" href="../../index.html#selenium">Selenium</a><a class="tb-next" href="0008-screenshots.html">&rarr;</a></div>
+<main class="sheet">
+
+<p class="eyebrow">Lesson 07 &middot; Selenium</p>
+<h1>Every element type you have to handle</h1>
+<p class="standfirst">Most of the page is <code>findElement</code> then
+<code>click</code> or <code>sendKeys</code>. Five things are not, and those five are what
+interviewers ask about. This lesson is those five, plus tables and the JavaScript escape
+hatch. All of it ran green in <code>ElementTypesTest</code>.</p>
+
+<div class="note">
+  <span class="lbl">The whole lesson in one box</span>
+  <p>Ordinary elements: <code>click()</code>, <code>sendKeys()</code>,
+  <code>getText()</code>, <code>clear()</code>, <code>isDisplayed()</code>,
+  <code>isEnabled()</code>, <code>isSelected()</code>, <code>getAttribute()</code>.</p>
+  <p>The five exceptions to that:</p>
+  <p><strong>&lt;select&gt;</strong> needs the <code>Select</code> class.<br>
+  <strong>Alerts</strong> need <code>switchTo().alert()</code>.<br>
+  <strong>Frames</strong> need <code>switchTo().frame()</code>, and switching back
+  out.<br>
+  <strong>New tabs</strong> need window handles.<br>
+  <strong>Hover</strong> needs the <code>Actions</code> class.</p>
+</div>
+
+<hr>
+
+<h2 id="select">1. Dropdowns</h2>
+
+<p>Only for a real <code>&lt;select&gt;</code> tag. Wrap the element, then choose.</p>
+
+<pre><code>Select country = new Select(driver.findElement(By.id("country")));
+
+country.selectByVisibleText("United Kingdom");   // what the user sees
+country.selectByValue("us");                     // the value attribute
+country.selectByIndex(0);                        // 0-based
+
+country.getFirstSelectedOption().getText();      // read it back
+country.getOptions().size();                     // all options
+country.isMultiple();</code></pre>
+
+<p>Multi-select adds the other half:</p>
+
+<pre><code>skills.getAllSelectedOptions();
+skills.deselectByValue("java");
+skills.deselectAll();                            // throws on a single select</code></pre>
+
+<div class="warn">
+  <span class="lbl">The follow-up: what if it is not a &lt;select&gt;?</span>
+  <p>Most modern dropdowns are divs styled to look like a dropdown. The
+  <code>Select</code> class throws <code>UnexpectedTagNameException</code> on those.</p>
+  <p>Then it is just clicking. Click the toggle, wait for the options to be visible, click
+  the one you want. Say this in an interview and you have shown you have tested a real
+  application rather than a tutorial page.</p>
+</div>
+
+<hr>
+
+<h2 id="checkbox">2. Checkboxes and radios</h2>
+
+<div class="warn">
+  <span class="lbl">click() toggles. It does not tick.</span>
+  <p>Calling <code>click()</code> on a box that is already ticked <strong>unticks
+  it</strong>. Every framework ends up with this helper, and writing it out is a good
+  interview answer.</p>
+<pre><code>private void setChecked(WebElement box, boolean wanted) {
+    if (box.isSelected() != wanted) {
+        box.click();
+    }
+}</code></pre>
+</div>
+
+<p><code>isSelected()</code> is the one that reads checked state. Do not use
+<code>getAttribute("checked")</code>, which reports the original HTML rather than the
+current state.</p>
+
+<p>Radios work the same way, except clicking one clears the others in its group
+automatically. You never need to unclick a radio.</p>
+
+<hr>
+
+<h2 id="alerts">3. Alerts</h2>
+
+<p>A browser alert is not part of the page. No locator can reach it. You switch to
+it.</p>
+
+<pre><code>Alert alert = wait.until(ExpectedConditions.alertIsPresent());
+
+alert.getText();
+alert.accept();          // OK
+alert.dismiss();         // Cancel
+alert.sendKeys("Yugan"); // only for a prompt</code></pre>
+
+<table>
+  <thead><tr><th>Type</th><th>Buttons</th><th>Can you type?</th></tr></thead>
+  <tbody>
+    <tr><td><code>alert()</code></td><td>OK only</td><td>no</td></tr>
+    <tr><td><code>confirm()</code></td><td>OK and Cancel</td><td>no</td></tr>
+    <tr><td><code>prompt()</code></td><td>OK and Cancel</td><td>yes</td></tr>
+  </tbody>
+</table>
+
+<p>Leave an alert open and every following command throws
+<code>UnhandledAlertException</code>. Always accept or dismiss it.</p>
+
+<p class="aside">A native alert is the browser's own dialog. A "modal" built out of HTML
+is not an alert at all, and you locate it normally. Knowing that distinction is the point
+of the question.</p>
+
+<hr>
+
+<h2 id="frames">4. Frames</h2>
+
+<p>An element inside an iframe is invisible to the driver until you switch in. Not slow to
+find. <strong>Invisible.</strong> You get <code>NoSuchElementException</code> and it looks
+like a locator problem.</p>
+
+<pre><code>driver.switchTo().frame("theFrame");        // by name or id
+driver.switchTo().frame(0);                 // by index
+driver.switchTo().frame(element);           // by WebElement
+
+// ... work inside ...
+
+driver.switchTo().defaultContent();         // back to the top document
+driver.switchTo().parentFrame();            // up one level only</code></pre>
+
+<p>The switch back out is the half people forget. Everything after it fails, and the
+failure appears somewhere unrelated to the frame.</p>
+
+<hr>
+
+<h2 id="windows">5. Windows and tabs</h2>
+
+<p>Opening a new tab does not move the driver. It keeps talking to the old one until you
+switch.</p>
+
+<pre><code>String original = driver.getWindowHandle();          // save where you are
+
+driver.findElement(By.id("new-tab")).click();
+wait.until(ExpectedConditions.numberOfWindowsToBe(2));
+
+for (String handle : driver.getWindowHandles()) {
+    if (!handle.equals(original)) {
+        driver.switchTo().window(handle);
+    }
+}
+
+// ... work in the new tab ...
+
+driver.close();                        // closes THIS tab only
+driver.switchTo().window(original);    // you must switch back</code></pre>
+
+<p>A handle is an opaque id string, not a title or a URL. And
+<code>close()</code> versus <code>quit()</code> matters here: <code>close()</code> shuts
+one tab, <code>quit()</code> ends the whole session and kills the driver process.</p>
+
+<hr>
+
+<h2 id="actions">6. Actions: hover, drag, right click</h2>
+
+<p><code>WebElement</code> has no hover method. <code>Actions</code> is the only way.</p>
+
+<pre><code>new Actions(driver)
+    .moveToElement(menu)         // hover
+    .perform();                  // nothing happens until perform()
+
+new Actions(driver).contextClick(row).perform();          // right click
+new Actions(driver).doubleClick(cell).perform();
+new Actions(driver).dragAndDrop(source, target).perform();
+new Actions(driver).keyDown(Keys.SHIFT).click(item).keyUp(Keys.SHIFT).perform();</code></pre>
+
+<p>The one rule: <strong>nothing runs until <code>perform()</code></strong>. A chain
+without it is a silent no-op, and it is the classic Actions bug.</p>
+
+<hr>
+
+<h2 id="tables">7. Tables</h2>
+
+<p>A table is just nested elements. Two things you actually do:</p>
+
+<pre><code>// Count rows
+driver.findElements(By.cssSelector("#orders tbody tr")).size();
+
+// Read a whole column
+driver.findElements(By.cssSelector("#orders tbody tr td:nth-child(2)"));</code></pre>
+
+<p>And the one that matters, from <a href="0006-locators.html">lesson 6</a>: find a row by
+its content, then read another cell in it.</p>
+
+<pre><code>driver.findElement(By.xpath("//table[@id='orders']//tr[td[text()='Bob']]/td[3]"));</code></pre>
+
+<p>Never index rows by number. The data reorders and your test starts checking the wrong
+customer while still passing.</p>
+
+<hr>
+
+<h2 id="js">8. The JavaScript escape hatch</h2>
+
+<pre><code>((JavascriptExecutor) driver)
+    .executeScript("arguments[0].scrollIntoView({block:'center'});", element);</code></pre>
+
+<div class="warn">
+  <span class="lbl">Where the line is, and they will ask</span>
+  <p><strong>Legitimate:</strong> scrolling something into view, reading a JS value the
+  DOM does not expose, setting up state quickly in a fixture.</p>
+  <p><strong>Usually wrong:</strong> a JS click to get past a failing normal click. If
+  Selenium cannot click it, a user could not have clicked it either. A JS click bypasses
+  that and turns a real bug into a green test.</p>
+  <p>The good answer: "I use it for scrolling. If I need it to click, I treat that as a
+  signal that something is covering the element, and I fix the wait instead."</p>
+</div>
+
+<hr>
+
+<h2>Check yourself</h2>
+<p class="quiz-score"></p>
+
+<div class="quiz" data-answer="2"
+  data-ok="It toggles. Clicking a ticked box unticks it, so read isSelected() first and only click when the state is wrong."
+  data-no="click() does not set a checkbox to ticked. It flips whatever state it is in, so clicking a ticked box clears it.">
+  <p class="q">You call <code>click()</code> on a checkbox that is already ticked. What
+  happens?</p>
+  <button class="opt">Nothing, it is already in that state</button>
+  <button class="opt">It unticks, because click toggles</button>
+  <button class="opt">It throws, because the state is wrong</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="You have not switched into the frame. Until you do, its contents are invisible to the driver."
+  data-no="It is not a wait problem or a locator problem. Elements inside an iframe cannot be seen at all until you switch into that frame.">
+  <p class="q">An element is visible in Chrome but <code>findElement</code> throws. It is
+  inside an iframe. Why?</p>
+  <button class="opt">The frame loads after the wait expires</button>
+  <button class="opt">Frames need an XPath, not a CSS one</button>
+  <button class="opt">You have not switched into the frame</button>
+</div>
+
+<div class="quiz" data-answer="1"
+  data-ok="Nothing runs until perform() is called. The chain just builds up a sequence of actions."
+  data-no="The chain builds an action sequence and does not execute it. Without perform() the whole thing is a silent no-op.">
+  <p class="q">Your <code>Actions</code> chain does nothing at all. What is missing?</p>
+  <button class="opt">The perform call at the end</button>
+  <button class="opt">An explicit wait before it runs</button>
+  <button class="opt">A moveToElement before the click</button>
+</div>
+
+<div class="quiz" data-answer="2"
+  data-ok="The Select class only works on a real select tag. For a div-based dropdown you click the toggle, then click the option."
+  data-no="Select throws UnexpectedTagNameException on anything that is not a select tag. Treat a div dropdown as ordinary elements and click them.">
+  <p class="q">A dropdown is built from divs, not a <code>&lt;select&gt;</code>. How do you
+  use it?</p>
+  <button class="opt">Wrap it in Select as normal</button>
+  <button class="opt">Click the toggle, then the option</button>
+  <button class="opt">Use sendKeys with the option text</button>
+</div>
+
+<div class="quiz" data-answer="3"
+  data-ok="A user could not have clicked it either. The JS click bypasses the real problem and turns a genuine bug green."
+  data-no="It is not about speed or support. The point is that a normal click failing usually means something is covering the element, which is a real bug a user would hit.">
+  <p class="q">Why is a JavaScript click usually the wrong fix for a failing click?</p>
+  <button class="opt">It is much slower than a normal click</button>
+  <button class="opt">It does not work in headless Chrome</button>
+  <button class="opt">It hides a bug a real user would hit</button>
+</div>
+
+<hr>
+
+<h2>Run it</h2>
+
+<pre><code>mvn test -Dsurefire.suiteXmlFiles=selenium.xml -Dtest=ElementTypesTest</code></pre>
+
+<p>Ten tests, green as shipped. Watch it happen with
+<code>-Dheadless=false</code>, which is worth doing once for the alerts and the new
+tab.</p>
+
+<h2>The one-page summary</h2>
+
+<table>
+  <thead><tr><th>Thing</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td>Text box</td><td><code>clear()</code> then <code>sendKeys()</code></td></tr>
+    <tr><td>Button, link</td><td><code>click()</code></td></tr>
+    <tr><td>Read text</td><td><code>getText()</code>, or <code>getAttribute("value")</code> for an input</td></tr>
+    <tr><td>Dropdown</td><td><code>new Select(el)</code>, or click if it is divs</td></tr>
+    <tr><td>Checkbox, radio</td><td><code>isSelected()</code> first, then <code>click()</code></td></tr>
+    <tr><td>Alert</td><td><code>switchTo().alert()</code>, then accept or dismiss</td></tr>
+    <tr><td>Frame</td><td><code>switchTo().frame()</code>, and <code>defaultContent()</code> after</td></tr>
+    <tr><td>New tab</td><td><code>getWindowHandles()</code>, then <code>switchTo().window()</code></td></tr>
+    <tr><td>Hover, drag</td><td><code>Actions</code>, and never forget <code>perform()</code></td></tr>
+    <tr><td>Table cell</td><td>filter the row by text, then take the cell</td></tr>
+    <tr><td>Scroll</td><td><code>JavascriptExecutor</code> with <code>scrollIntoView</code></td></tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  <h3>Primary source</h3>
+  <p>Selenium's
+  <a href="https://www.selenium.dev/documentation/webdriver/elements/interactions/">Interacting
+  with web elements</a>,
+  <a href="https://www.selenium.dev/documentation/webdriver/interactions/frames/">Frames</a>
+  and
+  <a href="https://www.selenium.dev/documentation/webdriver/interactions/windows/">Windows
+  and tabs</a>. Each is short.</p>
+
+  <h3>Files this lesson uses</h3>
+  <p><code>ElementTypesTest.java</code>, plus
+  <code>src/test/resources/pages/lesson5.html</code> and
+  <code>frame-inner.html</code>. Ten tests, verified green.</p>
+
+  <h3>Stuck?</h3>
+  <p>Ask me. Worth asking: "how do I handle a file upload?" It has a surprising answer:
+  no Actions, no dialog, just <code>sendKeys</code> with the file path on the
+  <code>&lt;input type="file"&gt;</code>.</p>
+
+  <p class="nav">
+    <a href="0006-locators.html">&larr; Lesson 6</a>
+    <a href="0004-explaining-your-framework.html">The framework talk</a>
+    <a href="0008-screenshots.html">Lesson 8 &rarr;</a>
+  </p>
+</div>
+
+<p class="sitenav"><a href="0006-locators.html">&larr; Lesson 6</a><a href="../../index.html#selenium">All lessons</a><a href="0008-screenshots.html">Lesson 8 &rarr;</a></p>
+</main>
+</body>
+</html>
