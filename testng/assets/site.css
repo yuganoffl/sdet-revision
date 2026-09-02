@@ -377,3 +377,32 @@ h2[id] { scroll-margin-top: 4.5rem; }
 }
 .hit mark { background: var(--accent); color: var(--paper); border-radius: 2px; padding: 0 2px; }
 .hit:active { border-color: var(--accent); }
+
+/* ---------- back to top ---------- */
+
+.totop {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  padding: 0;
+  /* It floats over code blocks, whose background is a hair off the page's,
+     so the border and shadow are what make it a button and not a smudge. */
+  border: 1px solid var(--ink-faint);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.totop:active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+}
+body.searching .totop { display: none !important; }   /* not over the overlay */
