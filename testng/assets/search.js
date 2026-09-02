@@ -29,12 +29,15 @@
 
   // ---- engine ----
 
-  function score(entry, terms) {
-    var total = 0;
+  function score(entry, q, terms) {
+    var title = entry.t.toLowerCase();
+    // A whole-phrase hit beats three scattered words.
+    var total = title === q ? 200 : title.indexOf(q) > -1 ? 90
+              : entry.x.indexOf(q) > -1 ? 25 : 0;
     for (var i = 0; i < terms.length; i++) {
       var t = terms[i];
       var hit = 0;
-      if (entry.t.toLowerCase().indexOf(t) > -1) hit += 12;
+      if (title.indexOf(t) > -1) hit += 12;
       if (entry.s.toLowerCase().indexOf(t) > -1) hit += 5;
       var n = entry.x.split(t).length - 1;
       if (n) hit += Math.min(n, 8);
@@ -58,7 +61,7 @@
     var terms = q.split(/\s+/);
     var hits = [];
     for (var i = 0; i < index.length; i++) {
-      var s = score(index[i], terms);
+      var s = score(index[i], q, terms);
       if (s) hits.push([s, index[i]]);
     }
     hits.sort(function (a, b) { return b[0] - a[0]; });
@@ -74,7 +77,8 @@
     listEl.innerHTML = r.hits.map(function (h) {
       var e = h[1];
       return '<a class="hit" href="' + root + e.h + '">' +
-             '<span class="hit-course">' + esc(e.c) + '</span>' +
+             '<span class="hit-course">' + esc(e.c) +
+             (e.p ? ' <span class="hit-parent">' + esc(e.p) + '</span>' : '') + '</span>' +
              '<span class="hit-title">' + esc(e.t) + '</span>' +
              '<span class="hit-snip">' + snippet(e, r.terms[0]) + '</span></a>';
     }).join('');

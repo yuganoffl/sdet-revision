@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Java 8 &middot; Java</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/highlight.js"></script>
 </head>
 <body>
@@ -101,7 +101,14 @@ document.addEventListener('click', function (e) {
   var d = document.querySelector(a.getAttribute('href'));
   if (d) d.open = true;
 });
+function reveal() {                     // arriving from search or a chip link
+  if (!location.hash) return;
+  var d = document.getElementById(location.hash.slice(1));
+  if (d && d.tagName === 'DETAILS') { d.open = true; d.scrollIntoView(); }
+}
+window.addEventListener('hashchange', reveal);
+reveal();
 </script>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 9 · Rapid-fire answers</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/highlight.js"></script>
 <style>
   .qa { border-top: 1px solid var(--rule); padding-top: 1.1rem; margin-top: 1.6rem; }
@@ -60,7 +60,7 @@ list.</p>
 </div>
 
 <div class="qa" id="q1">
-<h2><span>01</span>How do you handle a dropdown?</h2>
+<h2 id="01-how-do-you-handle-a-dropdown"><span>01</span>How do you handle a dropdown?</h2>
 <p>Wrap the element in the <code>Select</code> class, then choose by visible text, value or index.</p>
 <p>It only works on a real <code>&lt;select&gt;</code> tag. If the dropdown is built from divs, you just click the toggle and then the option.</p>
 <pre><code>Select country = new Select(driver.findElement(By.id("country")));
@@ -73,7 +73,7 @@ country.getFirstSelectedOption().getText();</code></pre>
 </div>
 
 <div class="qa" id="q2">
-<h2><span>02</span>How do you handle multiple windows?</h2>
+<h2 id="02-how-do-you-handle-multiple-windows"><span>02</span>How do you handle multiple windows?</h2>
 <p>Get the handles, copy them into a <code>List</code>, then switch by index.</p>
 <p><code>getWindowHandles()</code> returns a <code>Set</code>, which has no <code>get(i)</code>. The <code>ArrayList</code> is what makes a window addressable by position.</p>
 <pre><code>Set&lt;String&gt; windows = driver.getWindowHandles();
@@ -85,7 +85,7 @@ driver.switchTo().window(windowList.get(1));</code></pre>
 </div>
 
 <div class="qa" id="q3">
-<h2><span>03</span>Write code to capture a screenshot.</h2>
+<h2 id="03-write-code-to-capture-a-screenshot"><span>03</span>Write code to capture a screenshot.</h2>
 <p>Cast the driver to <code>TakesScreenshot</code>, call <code>getScreenshotAs</code>, then copy the file where you want it.</p>
 <p><code>OutputType.FILE</code> gives you a temp file that is deleted when the JVM exits, so the copy is what actually saves it.</p>
 <pre><code>TakesScreenshot ts = (TakesScreenshot) driver;
@@ -99,7 +99,7 @@ FileUtils.copyFile(source, destination);</code></pre>
 </div>
 
 <div class="qa" id="q4">
-<h2><span>04</span>How do you handle alerts?</h2>
+<h2 id="04-how-do-you-handle-alerts"><span>04</span>How do you handle alerts?</h2>
 <p><code>driver.switchTo().alert()</code>, then accept, dismiss or type into it.</p>
 <p>An alert is the browser's own dialog, not part of the page, so no locator reaches it.</p>
 <pre><code>Alert alert = driver.switchTo().alert();
@@ -112,7 +112,7 @@ alert.sendKeys("Yugan");   // prompt only</code></pre>
 </div>
 
 <div class="qa" id="q5">
-<h2><span>05</span>How do you perform drag and drop?</h2>
+<h2 id="05-how-do-you-perform-drag-and-drop"><span>05</span>How do you perform drag and drop?</h2>
 <p><code>Actions.dragAndDrop(source, target)</code>, followed by <code>perform()</code>.</p>
 <p>Nothing in an <code>Actions</code> chain runs until <code>perform()</code> is called.</p>
 <pre><code>Actions actions = new Actions(driver);
@@ -122,7 +122,7 @@ actions.dragAndDrop(source, target).perform();</code></pre>
 </div>
 
 <div class="qa" id="q6">
-<h2><span>06</span>Write code to handle frames.</h2>
+<h2 id="06-write-code-to-handle-frames"><span>06</span>Write code to handle frames.</h2>
 <p><code>driver.switchTo().frame(...)</code> by name, id, index or <code>WebElement</code>.</p>
 <p>Elements inside an iframe are invisible to the driver until you switch in, so you get <code>NoSuchElementException</code> and it looks like a broken locator.</p>
 <pre><code>driver.switchTo().frame("theFrame");
@@ -134,7 +134,7 @@ driver.switchTo().defaultContent();</code></pre>
 </div>
 
 <div class="qa" id="q7">
-<h2><span>07</span>How do you handle cookies?</h2>
+<h2 id="07-how-do-you-handle-cookies"><span>07</span>How do you handle cookies?</h2>
 <p>Everything is on <code>driver.manage()</code>: get, add, delete.</p>
 <p>The real use is skipping login. Save the session cookie once, then inject it so later tests start already authenticated.</p>
 <pre><code>Set&lt;Cookie&gt; all = driver.manage().getCookies();
@@ -147,7 +147,7 @@ driver.manage().deleteAllCookies();</code></pre>
 </div>
 
 <div class="qa" id="q8">
-<h2><span>08</span>How do you handle exceptions in Selenium?</h2>
+<h2 id="08-how-do-you-handle-exceptions-in-selenium"><span>08</span>How do you handle exceptions in Selenium?</h2>
 <p>In a test, you mostly do not. You assert the failure instead of catching it.</p>
 <p>A catch block turns a real application failure into a green pass. Catching belongs in the framework, in teardown and in listeners.</p>
 <pre><code>@Test(expectedExceptions = NoSuchElementException.class)
@@ -158,7 +158,7 @@ public void findElementThrowsWhenNothingMatches() {
 </div>
 
 <div class="qa" id="q9">
-<h2><span>09</span>How do you verify an element is displayed?</h2>
+<h2 id="09-how-do-you-verify-an-element-is-displayed"><span>09</span>How do you verify an element is displayed?</h2>
 <p><code>isDisplayed()</code> returns true when the element is visible to a user.</p>
 <p>It throws <code>NoSuchElementException</code> if the element is missing, so use <code>findElements(...).isEmpty()</code> when it might not exist at all.</p>
 <pre><code>boolean shown = driver.findElement(By.id("banner")).isDisplayed();
@@ -168,7 +168,7 @@ element.isSelected();    // checkbox, radio or option is chosen</code></pre>
 </div>
 
 <div class="qa" id="q10">
-<h2><span>10</span>How do you execute JavaScript?</h2>
+<h2 id="10-how-do-you-execute-javascript"><span>10</span>How do you execute JavaScript?</h2>
 <p>Cast the driver to <code>JavascriptExecutor</code> and call <code>executeScript</code>.</p>
 <p>Elements you pass in arrive as <code>arguments[0]</code>. To get a value back, the script must say <code>return</code>.</p>
 <pre><code>JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -180,7 +180,7 @@ String title = (String) js.executeScript("return document.title;");</code></pre>
 </div>
 
 <div class="qa" id="q11">
-<h2><span>11</span>How do you check for broken links on a page?</h2>
+<h2 id="11-how-do-you-check-for-broken-links-on-a-page"><span>11</span>How do you check for broken links on a page?</h2>
 <p>Collect every <code>href</code>, send an HTTP request to each, and check the response code. 400 or above is broken.</p>
 <p>Selenium cannot do this alone. It finds the links and <code>HttpURLConnection</code> checks them.</p>
 <pre><code>List&lt;WebElement&gt; links = driver.findElements(By.tagName("a"));
@@ -201,7 +201,7 @@ for (WebElement link : links) {
 </div>
 
 <div class="qa" id="q12">
-<h2><span>12</span>How do you wait for an element to be visible?</h2>
+<h2 id="12-how-do-you-wait-for-an-element-to-be-visible"><span>12</span>How do you wait for an element to be visible?</h2>
 <p><code>WebDriverWait</code> with <code>ExpectedConditions.visibilityOfElementLocated</code>.</p>
 <p>Prefer visibility over presence. Presence is satisfied by a hidden element, so <code>getText()</code> comes back empty.</p>
 <pre><code>WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -212,7 +212,7 @@ WebElement el = wait.until(
 </div>
 
 <div class="qa" id="q13">
-<h2><span>13</span>How do you perform a mouse hover?</h2>
+<h2 id="13-how-do-you-perform-a-mouse-hover"><span>13</span>How do you perform a mouse hover?</h2>
 <p><code>Actions.moveToElement(element)</code>, followed by <code>perform()</code>.</p>
 <p><code>WebElement</code> has no hover method, so <code>Actions</code> is the only way.</p>
 <pre><code>Actions actions = new Actions(driver);
@@ -221,7 +221,7 @@ actions.moveToElement(driver.findElement(By.id("menu"))).perform();</code></pre>
 </div>
 
 <div class="qa" id="q14">
-<h2><span>14</span>How do you handle a file upload?</h2>
+<h2 id="14-how-do-you-handle-a-file-upload"><span>14</span>How do you handle a file upload?</h2>
 <p><code>sendKeys()</code> the absolute file path onto the <code>&lt;input type="file"&gt;</code>.</p>
 <p>Do not click it. Clicking opens the operating system dialog, which Selenium cannot drive at all.</p>
 <pre><code>WebElement upload = driver.findElement(By.cssSelector("input[type='file']"));
@@ -231,7 +231,7 @@ upload.sendKeys("/Users/yugan/Documents/invoice.pdf");</code></pre>
 </div>
 
 <div class="qa" id="q15">
-<h2><span>15</span>How do you scroll to the bottom of the page?</h2>
+<h2 id="15-how-do-you-scroll-to-the-bottom-of-the-page"><span>15</span>How do you scroll to the bottom of the page?</h2>
 <p>Execute <code>window.scrollTo(0, document.body.scrollHeight)</code>.</p>
 <p>There is no Selenium command to scroll the window itself. Scrolling is JavaScript.</p>
 <pre><code>JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -241,7 +241,7 @@ js.executeScript("window.scrollTo(0, document.body.scrollHeight);");</code></pre
 </div>
 
 <div class="qa" id="q16">
-<h2><span>16</span>How do you handle a right click?</h2>
+<h2 id="16-how-do-you-handle-a-right-click"><span>16</span>How do you handle a right click?</h2>
 <p><code>Actions.contextClick(element)</code>, followed by <code>perform()</code>.</p>
 <p>That opens the application's own context menu, which you then locate normally. It cannot drive the browser's native menu.</p>
 <pre><code>Actions actions = new Actions(driver);
@@ -251,7 +251,7 @@ actions.contextClick(driver.findElement(By.id("row-3"))).perform();</code></pre>
 </div>
 
 <div class="qa" id="q17">
-<h2><span>17</span>How do you capture and print all links on a page?</h2>
+<h2 id="17-how-do-you-capture-and-print-all-links-on-a-p"><span>17</span>How do you capture and print all links on a page?</h2>
 <p><code>findElements(By.tagName("a"))</code>, then loop and read the text and the <code>href</code>.</p>
 <p><code>findElements</code> returns an empty list rather than throwing, so a page with no links is not an error.</p>
 <pre><code>List&lt;WebElement&gt; links = driver.findElements(By.tagName("a"));
@@ -266,7 +266,7 @@ for (WebElement link : links) {
 
 <hr>
 
-<h2>Twelve things to say only if asked</h2>
+<h2 id="twelve-things-to-say-only-if-asked">Twelve things to say only if asked</h2>
 
 <p>These are the follow-ups that hang off the seventeen above. One line each is
 enough.</p>
@@ -315,6 +315,6 @@ enough.</p>
 
 <p class="sitenav"><a href="0008-screenshots.html">&larr; Lesson 8</a><a href="../../index.html#selenium">All lessons</a><a href="../reference/driver-setup.html">Reference &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

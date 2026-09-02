@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 5 · Controlling execution</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/quiz.js"></script>
 <script src="../assets/highlight.js"></script>
 </head>
@@ -33,7 +33,7 @@ heavy on interview questions.</p>
 <p>Two files in your repo run everything below:
 <code>ExecutionOrderTest.java</code> and <code>TestAttributesTest.java</code>.</p>
 
-<h2>Two problems that look like one</h2>
+<h2 id="two-problems-that-look-like-one">Two problems that look like one</h2>
 
 <p>Lesson 2 showed that TestNG makes no promise about method order. Sooner or later
 that hurts, and people reach for <code>priority</code> to fix it. Half the time they
@@ -50,7 +50,7 @@ because a checkout failure caused by a broken login is a lie in your report. Tha
 <p>Use the ordering tool for the protection job and you get a report full of failures
 that all trace back to one real bug.</p>
 
-<h2>priority</h2>
+<h2 id="priority">priority</h2>
 
 <pre><code><span class="k">@Test</span>(priority = -5) <span class="k">public void</span> runsFirst()  { ... }
 <span class="k">@Test</span>               <span class="k">public void</span> noPriority() { ... }   <span class="c">defaults to 0</span>
@@ -90,7 +90,7 @@ it:</p>
 <p>Which is correct behaviour. <code>priority</code> is a sort key, nothing more. If
 you wanted the second one held back, you wanted a dependency.</p>
 
-<h2>dependsOnMethods</h2>
+<h2 id="dependsonmethods">dependsOnMethods</h2>
 
 <p>Flip <code>BREAK_LOGIN</code> to <code>true</code> at the top of
 <code>ExecutionOrderTest.java</code> and rerun. Same seven tests, both times.</p>
@@ -176,7 +176,7 @@ scales past a handful of methods:</p>
 <p>Now <code>checkout</code> waits for everything tagged <code>auth</code>, wherever it
 lives, even in another class. Groups are lesson 6.</p>
 
-<h2>The @Test attributes</h2>
+<h2 id="the-test-attributes">The @Test attributes</h2>
 
 <p><code>TestAttributesTest.java</code> has one of each, and the whole class passes.
 Run it:</p>
@@ -239,7 +239,7 @@ java.lang.IllegalStateException</code></pre>
   to one lambda.</p>
 </div>
 
-<h2>Should tests depend on each other at all?</h2>
+<h2 id="should-tests-depend-on-each-other-at-all">Should tests depend on each other at all?</h2>
 
 <p>Mostly no, and saying so is worth more than reciting the syntax.</p>
 
@@ -267,7 +267,7 @@ sounds experienced:</p>
 reports as one failure and two hundred skips instead of two hundred failures, and I
 avoid it everywhere else because it costs test independence.</em></p>
 
-<h2>Check yourself</h2>
+<h2 id="check-yourself">Check yourself</h2>
 
 <p class="quiz-score"></p>
 
@@ -311,7 +311,7 @@ avoid it everywhere else because it costs test independence.</em></p>
   <button class="opt">Reruns the method until it passes</button>
 </div>
 
-<h2>Before the next lesson</h2>
+<h2 id="before-the-next-lesson">Before the next lesson</h2>
 
 <ul>
   <li>flip <code>BREAK_LOGIN</code> to <code>true</code>, run
@@ -357,6 +357,6 @@ lesson 3 finally pays off.</p>
 
 <p class="sitenav"><a href="0004-dataprovider-and-excel.html">&larr; Lesson 4</a><a href="../../index.html#testng">All lessons</a><a href="0006-groups-and-parallel.html">Lesson 6 &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference · TestNG annotations and lifecycle</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/highlight.js"></script>
 </head>
 <body>
@@ -17,7 +17,7 @@
 <p class="standfirst">Definitions quoted from testng.org. Execution output verified
 by running the code on this machine, 2026-08-25.</p>
 
-<h2>The configuration annotations</h2>
+<h2 id="the-configuration-annotations">The configuration annotations</h2>
 
 <div class="scroll-x">
 <table>
@@ -40,7 +40,7 @@ by running the code on this machine, 2026-08-25.</p>
 <code>@DataProvider</code>, <code>@Parameters</code>, <code>@Factory</code>,
 <code>@Listeners</code>.</p>
 
-<h2>Order, single class, two test methods</h2>
+<h2 id="order-single-class-two-test-methods">Order, single class, two test methods</h2>
 
 <pre><code>@BeforeSuite
   @BeforeTest
@@ -54,7 +54,7 @@ by running the code on this machine, 2026-08-25.</p>
 <p><strong>Before</strong> methods run outside-in. <strong>After</strong> methods run
 inside-out. Only the <code>Method</code> pair repeats per test.</p>
 
-<h2>Order, two classes in one run</h2>
+<h2 id="order-two-classes-in-one-run">Order, two classes in one run</h2>
 
 <div class="scroll-x">
 <table>
@@ -67,7 +67,7 @@ inside-out. Only the <code>Method</code> pair repeats per test.</p>
 </table>
 </div>
 
-<h2>Not guaranteed</h2>
+<h2 id="not-guaranteed">Not guaranteed</h2>
 
 <ul>
   <li><strong>Class order.</strong> Not alphabetical, not declaration order.</li>
@@ -75,7 +75,7 @@ inside-out. Only the <code>Method</code> pair repeats per test.</p>
   Use <code>priority</code> or <code>dependsOnMethods</code> to force it.</li>
 </ul>
 
-<h2>Where real setup goes</h2>
+<h2 id="where-real-setup-goes">Where real setup goes</h2>
 
 <div class="scroll-x">
 <table>
@@ -93,7 +93,7 @@ inside-out. Only the <code>Method</code> pair repeats per test.</p>
 better. Browser in <code>@BeforeClass</code>, reset in <code>@BeforeMethod</code> is
 the defensible default.</p>
 
-<h2>Traps</h2>
+<h2 id="traps">Traps</h2>
 
 <div class="warn">
   <span class="lbl">Say these correctly</span>
@@ -116,6 +116,6 @@ the defensible default.</p>
 
 <p class="sitenav"><a href="../lessons/0007-listeners-reports-and-the-talk.html">&larr; Lesson 7</a><a href="../../index.html#testng">All lessons</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

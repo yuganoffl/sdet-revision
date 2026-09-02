@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 3 · testng.xml and the &lt;test&gt; tag</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/quiz.js"></script>
 <script src="../assets/highlight.js"></script>
 </head>
@@ -31,7 +31,7 @@ fire once, then twice, with the Java untouched.</p>
 <p>Everything below is you proving point 3 to yourself on your own machine. Read the
 first two sections, then start typing at Step 1.</p>
 
-<h2>Why the file exists</h2>
+<h2 id="why-the-file-exists">Why the file exists</h2>
 
 <p>So far you have run tests with <code>mvn test -Dtest=PalindromeTest</code>. Fine
 for one class. It gives you no way to say the things a real suite has to say:</p>
@@ -47,7 +47,7 @@ for one class. It gives you no way to say the things a real suite has to say:</p
 the code, so how the suite runs gets reviewed like any other file. Your repo already
 has a tiny one, <code>grouping.xml</code> in the project root.</p>
 
-<h2>The four tags</h2>
+<h2 id="the-four-tags">The four tags</h2>
 
 <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd"&gt;
@@ -88,7 +88,7 @@ class-not-found error.</p>
   <em>bundle</em> every time you see it.</p>
 </div>
 
-<h2>The experiment</h2>
+<h2 id="the-experiment">The experiment</h2>
 
 <p>You are going to run the same three Java files twice. Between the runs you change
 nothing but the XML, and the setup code goes from running once to running twice.</p>
@@ -182,7 +182,7 @@ difference is that each class now sits in its own <code>&lt;test&gt;</code> tag.
 
 <pre><code>mvn test -Dsurefire.suiteXmlFiles=two-tests.xml</code></pre>
 
-<h2>The two outputs, side by side</h2>
+<h2 id="the-two-outputs-side-by-side">The two outputs, side by side</h2>
 
 <div class="sbs">
   <div>
@@ -242,7 +242,7 @@ classes that can see it changes nothing.</p>
 other.</strong> TestNG picked an arbitrary instance to run the suite-level method on.
 So never write <code>@BeforeSuite</code> code that cares which class it hangs off.</p>
 
-<h2>What people use <code>&lt;test&gt;</code> tags for</h2>
+<h2 id="what-people-use-test-tags-for">What people use <code>&lt;test&gt;</code> tags for</h2>
 
 <p>Now that you can see the mechanism, the design makes sense. A
 <code>&lt;test&gt;</code> tag says <em>these classes belong together and share a
@@ -263,7 +263,7 @@ setup</em>.</p>
 <code>parallel="tests"</code> gives each <code>&lt;test&gt;</code> tag its own thread,
 which makes the tag the unit of isolation.</p>
 
-<h2>The suite file TestNG writes for you</h2>
+<h2 id="the-suite-file-testng-writes-for-you">The suite file TestNG writes for you</h2>
 
 <p>One more thing falls out of "the suite is a file". If the suite is just a file,
 TestNG can write one. After any run with failures it does exactly that, and the file
@@ -360,7 +360,7 @@ anything skipped because it depended on them, and you rerun by pointing your sui
 parameter at it. For flakiness you use an <code>IRetryAnalyzer</code> instead, so the
 retry happens inside the original run.</em></p>
 
-<h2>Check yourself</h2>
+<h2 id="check-yourself">Check yourself</h2>
 
 <p class="quiz-score"></p>
 
@@ -406,7 +406,7 @@ retry happens inside the original run.</em></p>
   <button class="opt">Twelve, the whole run is written out again</button>
 </div>
 
-<h2>Before the next lesson</h2>
+<h2 id="before-the-next-lesson">Before the next lesson</h2>
 
 <p>Write your own <code>testng.xml</code> in the project root, with two
 <code>&lt;test&gt;</code> tags in it:</p>
@@ -457,6 +457,6 @@ your <code>Apache.xlsx</code> file finally becomes useful.</p>
 
 <p class="sitenav"><a href="0002-the-lifecycle-annotations.html">&larr; Lesson 2</a><a href="../../index.html#testng">All lessons</a><a href="0004-dataprovider-and-excel.html">Lesson 4 &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

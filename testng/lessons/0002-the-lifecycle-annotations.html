@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 2 · The lifecycle annotations</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/quiz.js"></script>
 <script src="../assets/highlight.js"></script>
 </head>
@@ -18,7 +18,7 @@
 <p class="standfirst">TestNG's second job is running your tests. Ten annotations
 decide what happens around them, and one of them is named to mislead you.</p>
 
-<h2>The problem they solve</h2>
+<h2 id="the-problem-they-solve">The problem they solve</h2>
 
 <p>In <a href="0001-your-first-testng-test.html">lesson 1</a> your tests needed no
 setup. Real ones do. A Selenium test opens a browser. A database test opens a
@@ -31,7 +31,7 @@ only real question is how wide a net each piece of setup should cast, and that i
 what the ten annotations are for. They are not ten different features. They are one
 feature at five different scopes.</p>
 
-<h2>The five scopes</h2>
+<h2 id="the-five-scopes">The five scopes</h2>
 
 <p>The scopes nest, strictly, like boxes inside boxes.</p>
 
@@ -56,7 +56,7 @@ follows from the nesting.</p>
 <p>The fifth scope, <code>@BeforeGroups</code> and <code>@AfterGroups</code>, hangs
 off group membership rather than off the boxes. Park it until lesson 6.</p>
 
-<h2>Prove it yourself</h2>
+<h2 id="prove-it-yourself">Prove it yourself</h2>
 
 <p>Before you write anything, predict. Two test methods, all ten annotations, one
 class. Write down the order you expect on paper. Then create this file.</p>
@@ -108,7 +108,7 @@ imports is noise, and this is the one place a wildcard import earns its keep.</p
   innermost box. Learn the shape and you never memorise the list.</p>
 </div>
 
-<h2>Now the part that matters</h2>
+<h2 id="now-the-part-that-matters">Now the part that matters</h2>
 
 <p>Look again at that output. <code>@BeforeSuite</code>, <code>@BeforeTest</code>
 and <code>@BeforeClass</code> all did the exact same thing: they printed once, in a
@@ -173,7 +173,7 @@ not asked for one, you have a bug waiting for a slow day.</p>
   second job.</p>
 </div>
 
-<h2>What real code goes where</h2>
+<h2 id="what-real-code-goes-where">What real code goes where</h2>
 
 <p>Interviewers ask this as "where would you launch the browser?". The answer is
 always the same trade: wider scope is faster, narrower scope is safer.</p>
@@ -197,7 +197,7 @@ method is correct but slow. Opening one per suite is fast but lets one test pois
 every test after it. Say that trade out loud in an interview and you sound like
 someone who has actually run a suite.</p>
 
-<h2>Check yourself</h2>
+<h2 id="check-yourself">Check yourself</h2>
 
 <p class="quiz-score"></p>
 
@@ -231,7 +231,7 @@ someone who has actually run a suite.</p>
   <button class="opt">TestNG runs the last declared method of a class first</button>
 </div>
 
-<h2>Before the next lesson</h2>
+<h2 id="before-the-next-lesson">Before the next lesson</h2>
 
 <p>Take your <code>PalindromeTest</code> from lesson 1 and add two methods to it: a
 <code>@BeforeClass</code> that prints <code>"starting palindrome checks"</code> and
@@ -269,6 +269,6 @@ being a word you have memorised and start being a thing you can see.</p>
 
 <p class="sitenav"><a href="0001-your-first-testng-test.html">&larr; Lesson 1</a><a href="../../index.html#testng">All lessons</a><a href="0003-testng-xml-and-the-test-tag.html">Lesson 3 &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 4 · @DataProvider and Excel</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/quiz.js"></script>
 <script src="../assets/highlight.js"></script>
 </head>
@@ -38,7 +38,7 @@ already wrote months ago is the Excel half.</p>
   @DataProvider". This lesson is you cashing that in.</p>
 </div>
 
-<h2>Why not just loop?</h2>
+<h2 id="why-not-just-loop">Why not just loop?</h2>
 
 <p>The obvious move is a <code>for</code> loop inside one <code>@Test</code>. It looks
 like it does the job. Here are both approaches run against the same three words, with
@@ -85,7 +85,7 @@ of the system.</p>
 name: <code>isPalindrome[hello, true](2)</code>. TestNG puts the row's arguments in the
 test name for free. No logging, no message building.</p>
 
-<h2>The mechanism, with hardcoded rows</h2>
+<h2 id="the-mechanism-with-hardcoded-rows">The mechanism, with hardcoded rows</h2>
 
 <p>Learn it with no Excel in the way. This file is already in your repo.</p>
 
@@ -143,7 +143,7 @@ sheet records that as expected behaviour rather than leaving it undiscovered.</p
   message and count the columns.</p>
 </div>
 
-<h2>Now from Excel</h2>
+<h2 id="now-from-excel">Now from Excel</h2>
 
 <h3 class="step"><span class="n">Step 1</span> The sheet</h3>
 
@@ -265,7 +265,7 @@ single word of test data.</p>
 a provider is a good place to do conversion once. Reach for B when a sheet has fifteen
 columns and the test needs nine of them.</p>
 
-<h2>Four Excel gotchas</h2>
+<h2 id="four-excel-gotchas">Four Excel gotchas</h2>
 
 <p>These are the ones that cost an afternoon. All four were reproduced on your machine
 while writing this lesson.</p>
@@ -333,7 +333,7 @@ file is fine and the path is wrong. Print
 <code>WorkbookFactory.create(file)</code> picks the right one by sniffing the file, and
 is the better default in a framework you hand to other people.</p>
 
-<h2>@DataProvider vs @Parameters</h2>
+<h2 id="dataprovider-vs-parameters">@DataProvider vs @Parameters</h2>
 
 <p>Both feed values into tests, and interviewers like asking for the difference because
 the answer shows whether you have used either.</p>
@@ -368,7 +368,7 @@ array up front.</p>
 passes the test method that is about to run, so one provider can return different rows
 depending on who is asking.</p>
 
-<h2>Check yourself</h2>
+<h2 id="check-yourself">Check yourself</h2>
 
 <p class="quiz-score"></p>
 
@@ -412,7 +412,7 @@ depending on who is asking.</p>
   <button class="opt">@Parameters for the browser, @DataProvider for the rows</button>
 </div>
 
-<h2>Before the next lesson</h2>
+<h2 id="before-the-next-lesson">Before the next lesson</h2>
 
 <p>Do this one on your own file, <code>Apache.xlsx</code>, the credentials sheet with
 <code>Username</code> and <code>Password</code> columns.</p>
@@ -463,6 +463,6 @@ and <code>enabled</code>. Short lesson, heavy on interview questions.</p>
 
 <p class="sitenav"><a href="0003-testng-xml-and-the-test-tag.html">&larr; Lesson 3</a><a href="../../index.html#testng">All lessons</a><a href="0005-controlling-execution.html">Lesson 5 &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

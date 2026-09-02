@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 1 · Your first TestNG test</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/quiz.js"></script>
 <script src="../assets/highlight.js"></script>
 </head>
@@ -18,7 +18,7 @@
 <p class="standfirst">You have run tests before. Today you write one, and hand the
 judging over to the machine.</p>
 
-<h2>The shift you are making</h2>
+<h2 id="the-shift-you-are-making">The shift you are making</h2>
 
 <p>Every Java program in this repo ends the same way. A <code>main</code> method
 prints something, and <em>you</em> read the output and decide whether it looked
@@ -39,7 +39,7 @@ interviewers ask about them separately:</p>
 
 <p>Lesson 1 is only about the third job. The other two arrive in lessons 2 and 3.</p>
 
-<h2>Two words of vocabulary</h2>
+<h2 id="two-words-of-vocabulary">Two words of vocabulary</h2>
 
 <p><strong>Test method.</strong> An ordinary Java method marked with
 <code>@Test</code>. TestNG calls it. It must be <code>public</code> and it takes no
@@ -57,7 +57,7 @@ mechanism. A test passes by <em>not throwing</em>.</p>
   asserts is theatre.</p>
 </div>
 
-<h2>Write it</h2>
+<h2 id="write-it">Write it</h2>
 
 <p>Create this file. Type it rather than pasting it, this once.</p>
 
@@ -105,7 +105,7 @@ tests and a green build, which is the most dangerous output in this entire lesso
 will read at 2am when the build breaks. Write it as a statement of what
 <em>should</em> be true, not a description of the code.</p>
 
-<h2>Run it</h2>
+<h2 id="run-it">Run it</h2>
 
 <pre><code>mvn test -Dtest=PalindromeTest</code></pre>
 
@@ -126,7 +126,7 @@ test in the project. You should see this:</p>
   cases. TestNG found the methods by their annotation and did the rest.</p>
 </div>
 
-<h2>Now break it on purpose</h2>
+<h2 id="now-break-it-on-purpose">Now break it on purpose</h2>
 
 <p>This half matters more than the green run. A test you have never seen fail is a
 test you do not yet trust. Change <code>"hello"</code> to <code>"racecar"</code> in
@@ -145,7 +145,7 @@ passed. One failure does not stop the suite. Each test method stands alone.</p>
 
 <p>Then put <code>"hello"</code> back and confirm it goes green again.</p>
 
-<h2>The assertion methods, and the one that catches people</h2>
+<h2 id="the-assertion-methods-and-the-one-that-catches-p">The assertion methods, and the one that catches people</h2>
 
 <p>Everything lives in <code>org.testng.Assert</code>, all static.</p>
 
@@ -177,7 +177,7 @@ passed. One failure does not stop the suite. Each test method stands alone.</p>
 <code>assertSame</code> compares references with <code>==</code>. That is the same
 distinction you met in <code>Palindrome.usingReverse</code>.</p>
 
-<h2>Check yourself</h2>
+<h2 id="check-yourself">Check yourself</h2>
 
 <p class="quiz-score"></p>
 
@@ -214,7 +214,7 @@ distinction you met in <code>Palindrome.usingReverse</code>.</p>
   <button class="opt">The test throws an argument order exception</button>
 </div>
 
-<h2>Before the next lesson</h2>
+<h2 id="before-the-next-lesson">Before the next lesson</h2>
 
 <p>Add one more test method to <code>PalindromeTest</code> that checks
 <code>Palindrome.usingReverse</code> agrees with <code>usingTwoPointers</code> on
@@ -247,6 +247,6 @@ and the execution order question that opens most SDET interviews.</p>
 
 <p class="sitenav"><a href="../../index.html#testng">All lessons</a><a href="0002-the-lifecycle-annotations.html">Lesson 2 &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

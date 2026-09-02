@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference · WebDriver setup and teardown</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/highlight.js"></script>
 </head>
 <body>
@@ -17,7 +17,7 @@
 <p class="standfirst">Everything that happens before and after a test touches the page.
 Checked against the Selenium documentation, verified on Chrome 151 / Selenium 4.21 / JDK 21.</p>
 
-<h2>The skeleton</h2>
+<h2 id="the-skeleton">The skeleton</h2>
 
 <pre><code><span class="k">public abstract class</span> BaseTest {
     <span class="k">protected</span> WebDriver driver;
@@ -37,7 +37,7 @@ Checked against the Selenium documentation, verified on Chrome 151 / Selenium 4.
     }
 }</code></pre>
 
-<h2>Driver binaries</h2>
+<h2 id="driver-binaries">Driver binaries</h2>
 
 <div class="scroll-x">
 <table>
@@ -55,7 +55,7 @@ downloads and caches the driver. Since <strong>4.11</strong> it downloads the
 <em>browser</em> too, when one is not installed. Cache lives in
 <code>~/.cache/selenium</code>.</p>
 
-<h2>Scope: where setup goes</h2>
+<h2 id="scope-where-setup-goes">Scope: where setup goes</h2>
 
 <div class="scroll-x">
 <table>
@@ -71,7 +71,7 @@ downloads and caches the driver. Since <strong>4.11</strong> it downloads the
 (<code>-Dgroups=smoke</code>) can skip your setup method and every test then fails on a null
 driver.</p>
 
-<h2>close() vs quit()</h2>
+<h2 id="close-vs-quit">close() vs quit()</h2>
 
 <div class="scroll-x">
 <table>
@@ -89,7 +89,7 @@ at a window that is gone. Any command then throws <code>NoSuchWindowException</c
 you <code>switchTo().window(parentHandle)</code>.
 (<a href="https://www.selenium.dev/documentation/webdriver/interactions/windows/">docs</a>)</p>
 
-<h2>Page load strategy</h2>
+<h2 id="page-load-strategy">Page load strategy</h2>
 
 <div class="scroll-x">
 <table>
@@ -109,7 +109,7 @@ you <code>switchTo().window(parentHandle)</code>.
   before the DOM exists; it is rarely what you want.</p>
 </div>
 
-<h2>Useful ChromeOptions arguments</h2>
+<h2 id="useful-chromeoptions-arguments">Useful ChromeOptions arguments</h2>
 
 <div class="scroll-x">
 <table>
@@ -123,13 +123,13 @@ you <code>switchTo().window(parentHandle)</code>.
 </table>
 </div>
 
-<h2>Timeouts</h2>
+<h2 id="timeouts">Timeouts</h2>
 
 <pre><code>driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(<span class="s">60</span>));  <span class="c">// get() gives up</span>
 driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(<span class="s">30</span>));    <span class="c">// async JS gives up</span>
 driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(<span class="s">10</span>));  <span class="c">// DO NOT — see lesson 2</span></code></pre>
 
-<h2>Noise you can ignore</h2>
+<h2 id="noise-you-can-ignore">Noise you can ignore</h2>
 
 <div class="scroll-x">
 <table>
@@ -154,6 +154,6 @@ driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(<span class="s">10<
 
 <p class="sitenav"><a href="../lessons/0009-rapid-fire-answers.html">&larr; Lesson 9</a><a href="../../index.html#selenium">All lessons</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

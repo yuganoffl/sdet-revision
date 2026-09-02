@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 7 · Listeners, reports, and the talk</title>
 <link rel="stylesheet" href="../assets/lesson.css">
-<link rel="stylesheet" href="../assets/site.css?v=2f2357a7">
+<link rel="stylesheet" href="../assets/site.css?v=ba366d66">
 <script src="../assets/quiz.js"></script>
 <script src="../assets/highlight.js"></script>
 </head>
@@ -31,7 +31,7 @@ without waffling.</p>
 <p>Everything below runs from
 <code>mvn test -Dsurefire.suiteXmlFiles=listeners.xml</code>.</p>
 
-<h2>What a listener is for</h2>
+<h2 id="what-a-listener-is-for">What a listener is for</h2>
 
 <p>You want a screenshot on every failure. You could put a try/catch in all four
 hundred tests. Nobody does that. Instead you write one class that TestNG calls at
@@ -100,7 +100,7 @@ class, the throwable, the parameters from your lesson 4 data provider, timings, 
 <code>IReporter</code> runs once at the very end with the complete results, which is
 what report libraries hook into.</p>
 
-<h2>Retrying a flaky test</h2>
+<h2 id="retrying-a-flaky-test">Retrying a flaky test</h2>
 
 <p>Lesson 3 promised this. <code>testng-failed.xml</code> reruns failures in a second
 run you start by hand. <code>IRetryAnalyzer</code> retries inside the original run,
@@ -188,7 +188,7 @@ with no source change. Uncomment the second <code>&lt;listener&gt;</code> line i
   that and you sound like you have maintained a suite, not just built one.</p>
 </div>
 
-<h2>The reports you already have</h2>
+<h2 id="the-reports-you-already-have">The reports you already have</h2>
 
 <p>Every run has been writing these to <code>target/surefire-reports/</code>. Open
 them.</p>
@@ -217,7 +217,7 @@ attached to the failures.</p>
 through the same interface you just implemented is more useful than having used
 either.</p>
 
-<h2>Saying it out loud</h2>
+<h2 id="saying-it-out-loud">Saying it out loud</h2>
 
 <p>This is the part that decides the interview. "Tell me about your framework" is not a
 knowledge question, it is a fluency question, and the failure mode is rambling through
@@ -279,7 +279,7 @@ turns the build red.</em></p>
 </table>
 </div>
 
-<h2>Check yourself</h2>
+<h2 id="check-yourself">Check yourself</h2>
 
 <p class="quiz-score"></p>
 
@@ -321,7 +321,7 @@ turns the build red.</em></p>
   <button class="opt">A static block in the base class</button>
 </div>
 
-<h2>What to do now</h2>
+<h2 id="what-to-do-now">What to do now</h2>
 
 <ul>
   <li>run <code>listeners.xml</code> and read the <code>L&gt;</code> lines against the
@@ -367,6 +367,6 @@ these answers stop being memorised.</p>
 
 <p class="sitenav"><a href="0006-groups-and-parallel.html">&larr; Lesson 6</a><a href="../../index.html#testng">All lessons</a><a href="../reference/annotations-and-lifecycle.html">Reference &rarr;</a></p>
 </main>
-<script src="../../assets/search.js?v=2f2357a7" data-root="../../" defer></script>
+<script src="../../assets/search.js?v=ba366d66" data-root="../../" defer></script>
 </body>
 </html>

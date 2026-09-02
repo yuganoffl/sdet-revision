@@ -355,6 +355,8 @@ body.searching { overflow: hidden; }
   color: var(--ink);
   text-decoration: none;
 }
+h2[id] { scroll-margin-top: 4.5rem; }
+
 .hit-course {
   display: block;
   font-size: 0.64rem;
@@ -363,6 +365,7 @@ body.searching { overflow: hidden; }
   text-transform: uppercase;
   color: var(--accent);
 }
+.hit-parent { color: var(--ink-faint); font-weight: 600; }
 .hit-title { display: block; font-size: 0.95rem; font-weight: 650; margin-top: 0.15rem; }
 .hit-snip {
   display: block;
