@@ -285,6 +285,10 @@ body.searching { overflow: hidden; }
   justify-content: center;
   align-items: flex-start;
 }
+/* .searchwrap sets display:flex, which outranks the browser's own [hidden]
+   rule. Without this the overlay never goes away and swallows every tap. */
+.searchwrap[hidden] { display: none; }
+
 .searchsheet {
   width: 100%;
   max-width: 43rem;
