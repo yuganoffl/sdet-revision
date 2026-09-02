@@ -241,6 +241,7 @@ details.prog pre { margin-bottom: 1rem; }
   table { display: block; overflow-x: auto; white-space: nowrap; }
   table td, table th { white-space: normal; min-width: 7rem; }
   .quiz { padding: 1rem 1rem 0.85rem; }
+  .searchbar .kbd { display: none; }   /* no keyboard on a phone */
 }
 
 /* ---------- search ---------- */
@@ -265,6 +266,7 @@ details.prog pre { margin-bottom: 1rem; }
 .searchbar svg { width: 1.05rem; height: 1.05rem; flex: none; }
 .searchbar .kbd {
   margin-left: auto;
+  flex: none;
   font-size: 0.72rem;
   color: var(--ink-faint);
   border: 1px solid var(--rule);

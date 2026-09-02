@@ -2,7 +2,9 @@
    The page tells us where the site root is with data-root on the script tag;
    the index is fetched once, on the first open. */
 (function () {
-  var root = (document.currentScript && document.currentScript.dataset.root) || '';
+  var me = document.currentScript;
+  var root = (me && me.dataset.root) || '';
+  var ver = (me && me.src.split('v=')[1]) || '';   // same cache key as the css
   var index = null;
   var loading = null;
   var box, input, list, status;
