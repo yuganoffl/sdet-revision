@@ -2,6 +2,11 @@
    bar on every lesson, and the fixes a 19px serif column needs on a 390px
    screen. lesson.css owns the typography; this file only adds. */
 
+/* Several rules below set display: on elements we also hide with the hidden
+   attribute, and an author rule outranks the browser's [hidden] { display: none }.
+   Say it once, with weight, instead of remembering it at every call site. */
+[hidden] { display: none !important; }
+
 body { padding: 0 1.1rem 5rem; }
 .sheet { max-width: 43rem; }
 
@@ -298,10 +303,6 @@ body.searching { overflow: hidden; }
   justify-content: center;
   align-items: flex-start;
 }
-/* .searchwrap sets display:flex, which outranks the browser's own [hidden]
-   rule. Without this the overlay never goes away and swallows every tap. */
-.searchwrap[hidden] { display: none; }
-
 .searchsheet {
   width: 100%;
   max-width: 43rem;

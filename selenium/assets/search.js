@@ -14,6 +14,20 @@
   var index = null;
   var loading = null;
 
+  /* "reverse the number" means reverse + number. Scoring or highlighting "the"
+     rewards long pages for saying nothing and paints the snippet orange. */
+  var STOP = {};
+  ('the a an of in on to and or for is it as at by with be been are was were ' +
+   'this that these those from but not into its has have had there then than ' +
+   'how do does did i you your we my me what why when where which who can ' +
+   'could should would will they them so if').split(' ')
+    .forEach(function (w) { STOP[w] = 1; });
+
+  function meaningful(terms) {
+    var kept = terms.filter(function (t) { return !STOP[t]; });
+    return kept.length ? kept : terms;      // a search for "the" still works
+  }
+
   function esc(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -37,34 +51,55 @@
     for (var i = 0; i < terms.length; i++) {
       var t = terms[i];
       var hit = 0;
-      if (title.indexOf(t) > -1) hit += 12;
+      if (title.indexOf(t) > -1) hit += 14;
+      // The lesson a section sits in says a lot: "Taking one" under
+      // "Lesson 8 - Screenshots" is about screenshots.
+      if (entry.p && entry.p.toLowerCase().indexOf(t) > -1) hit += 7;
       if (entry.s.toLowerCase().indexOf(t) > -1) hit += 5;
       var n = entry.x.split(t).length - 1;
-      if (n) hit += Math.min(n, 8);
+      if (n) hit += Math.min(n, 4);       // a long page saying it often is not a better answer
       if (!hit) return 0;              // every word must appear somewhere
       total += hit;
     }
     return total;
   }
 
-  function snippet(entry, term) {
-    var at = entry.x.indexOf(term);
+  function rx(term) {
+    return new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+  }
+
+  /* Show the passage where the match actually is, and mark every word of the
+     query in it, not just the first one. */
+  function snippet(entry, q, terms) {
+    var at = entry.x.indexOf(q);          // the whole phrase, if it is there
+    if (at < 0) {
+      at = -1;
+      for (var i = 0; i < terms.length; i++) {   // else the longest word that is
+        var sorted = terms.slice().sort(function (a, b) { return b.length - a.length; });
+        var found = entry.x.indexOf(sorted[i]);
+        if (found > -1) { at = found; break; }
+      }
+    }
     if (at < 0) return esc(entry.s);
     var from = Math.max(0, at - 60);
-    var text = entry.x.slice(from, at + 100).trim();
-    var out = esc((from ? '…' : '') + text + '…');
-    return out.replace(new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'),
-                       '<mark>$1</mark>');
+    var out = esc((from ? '…' : '') + entry.x.slice(from, at + 120).trim() + '…');
+    terms.forEach(function (term) {
+      out = out.replace(rx(term), '<mark>$&</mark>');
+    });
+    return out;
   }
 
   function lookup(q) {
-    var terms = q.split(/\s+/);
+    var terms = meaningful(q.split(/\s+/));
     var hits = [];
     for (var i = 0; i < index.length; i++) {
       var s = score(index[i], q, terms);
       if (s) hits.push([s, index[i]]);
     }
     hits.sort(function (a, b) { return b[0] - a[0]; });
+    var deep = {};
+    hits.forEach(function (h) { if (h[1].p) deep[h[1].h.split('#')[0]] = true; });
+    hits = hits.filter(function (h) { return h[1].p || !deep[h[1].h]; });
     return { terms: terms, hits: hits.slice(0, 25) };
   }
 
@@ -80,7 +115,7 @@
              '<span class="hit-course">' + esc(e.c) +
              (e.p ? ' <span class="hit-parent">' + esc(e.p) + '</span>' : '') + '</span>' +
              '<span class="hit-title">' + esc(e.t) + '</span>' +
-             '<span class="hit-snip">' + snippet(e, r.terms[0]) + '</span></a>';
+             '<span class="hit-snip">' + snippet(e, q, r.terms) + '</span></a>';
     }).join('');
   }
 
