@@ -241,38 +241,51 @@ details.prog pre { margin-bottom: 1rem; }
   table { display: block; overflow-x: auto; white-space: nowrap; }
   table td, table th { white-space: normal; min-width: 7rem; }
   .quiz { padding: 1rem 1rem 0.85rem; }
-  .searchbar .kbd { display: none; }   /* no keyboard on a phone */
 }
 
 /* ---------- search ---------- */
 
-.searchbar {
+/* Home page: a real input, filtering the page underneath. No overlay here. */
+.searchbox {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 100%;
+  gap: 0.55rem;
   max-width: 43rem;
   margin: 0 auto 1.1rem;
-  padding: 0.75rem 0.95rem;
+  padding: 0 0.6rem 0 0.95rem;
   border: 1px solid var(--rule);
   border-radius: 999px;
   background: var(--paper-sunk);
+  color: var(--ink-faint);
+}
+.searchbox:focus-within { border-color: var(--accent); color: var(--accent); }
+.searchbox svg { width: 17px; height: 17px; flex: none; }
+.searchfield {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.9rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.searchfield:focus { outline: none; }
+.searchfield::-webkit-search-cancel-button { display: none; }
+.searchclear {
+  flex: none;
+  min-height: 2.2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
   color: var(--ink-soft);
   font-family: var(--sans);
-  font-size: 0.9rem;
-  text-align: left;
+  font-size: 0.78rem;
   cursor: pointer;
 }
-.searchbar svg { width: 1.05rem; height: 1.05rem; flex: none; }
-.searchbar .kbd {
-  margin-left: auto;
-  flex: none;
-  font-size: 0.72rem;
-  color: var(--ink-faint);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 0.1rem 0.35rem;
-}
+.home .searchstatus, .home .searchresults { max-width: 43rem; margin: 0 auto; }
 
 body.searching { overflow: hidden; }
 
